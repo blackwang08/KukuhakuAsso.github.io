@@ -17,6 +17,7 @@
 
 <script setup>
 import { ref } from 'vue'
+import { useAnswerNormalizer } from '@/utils/answerNormalizer'
 
 // 接收父组件传入的谜题数据（对应 Jekyll 的 front matter 和内容）
 const props = defineProps({
@@ -28,36 +29,46 @@ const props = defineProps({
 const answer = ref('')
 const result = ref('')
 const loading = ref(false)
+// 使用 composable，默认宽松模式，也可以传入 'strict'
+const { mode, setMode, normalize } = useAnswerNormalizer('loose')
 
 // 替换为你实际的云函数触发地址
 const apiUrl = 'https://your-cloud-function-url.com/verify'
 
 async function checkAnswer() {
-    const ans = answer.value
-    if (!ans) {
+    const raw = answer.value
+    if (!raw) {
         result.value = '请输入答案'
         return
     }
 
+    // 规范化
+    const normalized = normalize(raw)
+    if (!normalized) {
+        result.value = '答案无效，请重新输入'
+        return
+    }
+
+    if (loading.value) return
     loading.value = true
     result.value = ''
 
     try {
-        const fullUrl = `${apiUrl}?level=${encodeURIComponent(props.level)}&answer=${encodeURIComponent(ans)}`
-        const response = await fetch(fullUrl, { redirect: 'follow' })
-
+        const url = `${apiUrl}?level=${encodeURIComponent(props.level)}&answer=${encodeURIComponent(normalized)}`
+        const response = await fetch(url, { redirect: 'follow' })
+        // ... 处理响应逻辑
         if (response.status === 403) {
             result.value = '答案错误，请再试试'
         } else if (response.redirected) {
-            // 云函数返回 302 重定向到 COS 下载链接，浏览器直接跳转
             window.location.href = response.url
         } else {
             result.value = '发生未知错误，请稍后重试'
         }
-    } catch (error) {
+    } catch {
         result.value = '网络错误，请检查网络后重试'
     } finally {
         loading.value = false
     }
 }
+
 </script>

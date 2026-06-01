@@ -54,7 +54,7 @@ export default defineConfig({
             RssPlugin({
                 title: dynamicTitle,
                 baseUrl: pkg.baseUrl || hostname,
-                description: pkg.description || "自动生成的描述",
+                description: dynamicDescription || "自动生成的描述",
             }),
         ],
 

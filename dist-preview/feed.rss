@@ -3,15 +3,15 @@
     <channel>
         <title>空白解谜组</title>
         <link>https://KukuhakuAsso.github.io/</link>
-        <description>自动生成的描述</description>
-        <lastBuildDate>Mon, 01 Jun 2026 13:58:45 GMT</lastBuildDate>
+        <description>空白永不败北</description>
+        <lastBuildDate>Mon, 01 Jun 2026 14:51:41 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>https://github.com/jpmonette/feed</generator>
         <item>
             <title><![CDATA[关于我们]]></title>
             <link>https://KukuhakuAsso.github.io//about.html</link>
             <guid isPermaLink="false">https://KukuhakuAsso.github.io//about.html</guid>
-            <pubDate>Mon, 01 Jun 2026 12:26:37 GMT</pubDate>
+            <pubDate>Mon, 01 Jun 2026 13:59:31 GMT</pubDate>
         </item>
         <item>
             <title><![CDATA[Runtime API Examples]]></title>

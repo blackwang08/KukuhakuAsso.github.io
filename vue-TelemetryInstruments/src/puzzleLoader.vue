@@ -33,7 +33,7 @@ const loading = ref(false)
 const { mode, setMode, normalize } = useAnswerNormalizer('loose')
 
 // 替换为你实际的云函数触发地址
-const apiUrl = 'https://your-cloud-function-url.com/verify'
+const apiUrl = 'https://1438673597-0z3hiqb0be.ap-shanghai.tencentscf.com'
 
 async function checkAnswer() {
     const raw = answer.value

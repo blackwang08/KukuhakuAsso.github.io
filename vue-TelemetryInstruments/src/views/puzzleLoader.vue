@@ -46,7 +46,7 @@ const isSuccess = ref(false)
 const endingImageUrl = ref('')
 
 // 替换成你的云函数 URL
-const apiUrl = 'https://你的函数ID.scf.地域.tencentcloudapi.com'
+const apiUrl = 'https://1438673597-0z3hiqb0be.ap-shanghai.tencentscf.com'
 
 async function checkAnswer() {
   const raw = answer.value.trim()

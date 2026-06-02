@@ -1,6 +1,6 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import Home from '../views/Home.vue'
-import PuzzleLoader from '../views/puzzleLoader.vue'  // 你的组件
+import PuzzleLoader from '../src/puzzleLoader.vue'  // 你的组件
 
 const routes = [
   { path: '/', component: Home },

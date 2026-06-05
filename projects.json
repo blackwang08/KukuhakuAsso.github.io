@@ -5,6 +5,9 @@
         "buildCmd": "npm run build",
         "outputDir": "output",
         "subPath": "vue-telemetry",
-        "devPort": 5175
+        "devPort": 5175,
+        "proxyApi": [
+            "/api-base"
+        ]
     }
 ]

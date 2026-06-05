@@ -13,6 +13,19 @@ projects.forEach((project) => {
     if (project.subPath && project.devPort) {
         proxy[`/${project.subPath}`] = `http://localhost:${project.devPort}`;
     }
+    if (Array.isArray(project.proxyApi)) {
+        project.proxyApi.forEach((apiPrefix) => {
+            // 避免覆盖已存在的相同前缀
+            if (!proxy[apiPrefix]) {
+                proxy[apiPrefix] = {
+                    target: `http://localhost:${project.devPort}`,
+                    changeOrigin: true,
+                };
+            } else {
+                console.warn(`代理前缀 "${apiPrefix}" 已被占用，跳过重复添加`);
+            }
+        });
+    }
 });
 
 // 1. 从 package.json 中动态读取 name 或 description

@@ -90,7 +90,7 @@ const playDefault = inject('playDefault', null)
 
 // ==================== 工具函数 ====================
 function goToLevel(level) {
-  if (level < 1) return
+  if (level < 0) return
   router.push(`/puzzle/${level}`)
 }
 

@@ -58,11 +58,7 @@ import {
 
 const route = useRoute()
 const router = useRouter()
-
-const props = defineProps({
-  level: { type: [String, Number], required: true }
-})
-
+const props = defineProps({ level: { type: [String, Number], required: true } })
 const currentLevel = computed(() => parseInt(props.level))
 
 // ==================== 全局累积状态 ====================
@@ -90,6 +86,7 @@ let endingObjectURL = null
 
 // 注入的背景音乐切换方法
 const changeBgm = inject('changeBgm', null)
+const playDefault = inject('playDefault', null)
 
 // ==================== 工具函数 ====================
 function goToLevel(level) {
@@ -112,30 +109,81 @@ function revokeLocalObjectURL() {
 }
 
 // 安全调用背景音乐切换
-async function switchBgm(bgmConfig) {
-  if (!changeBgm || !bgmConfig) return
+async function switchBgm(bgmConfig, skipCache = false) {
+  if (!changeBgm || !playDefault) return
+
+  if (!bgmConfig) {
+    console.log('未设置背景音乐，播放默认音乐中')
+    playDefault()
+    cacheBgmConfig(null)
+    return
+  }
+
   try {
-    await changeBgm(bgmConfig) // 假设 changeBgm 接受 { key, decryptKey } 或直接是 url
+    await changeBgm(bgmConfig)
+    if (!skipCache) {
+      cacheBgmConfig(bgmConfig)
+    }
   } catch (e) {
     console.warn('切换背景音乐失败:', e)
+  }
+}
+
+// 缓存bgm配置
+function cacheBgmConfig(bgmConfig) {
+  if (!bgmConfig) {
+    localStorage.removeItem('last_bgm_config')
+    return
+  }
+  try {
+    localStorage.setItem('last_bgm_config', JSON.stringify(bgmConfig))
+  } catch (e) {
+    console.warn('缓存 BGM 配置失败', e)
+  }
+}
+
+// 从 localStorage 恢复 BGM 配置
+async function restoreCachedBgm() {
+  const cached = localStorage.getItem('last_bgm_config')
+  if (cached) {
+    try {
+      const config = JSON.parse(cached)
+      if (config && (config.file || config.musicId)) {
+        await switchBgm(config)   // 恢复时正常缓存（但实际上已经是缓存了，不会重复写入）
+        return
+      }
+    } catch (e) {
+      console.warn('BGM 缓存解析失败')
+    }
+  }
+  // 无有效缓存，播放默认音乐
+  if (playDefault) playDefault()
+}
+
+// 下载结局音乐并缓存到 IndexedDB
+async function cacheEndingMusic(url) {
+  try {
+    const response = await fetch(url)
+    if (!response.ok) throw new Error('下载结局音乐失败')
+    const blob = await response.blob()
+    await saveClueImageBlob('endingMusic', blob)
+  } catch (e) {
+    console.warn('缓存结局音乐失败:', e)
   }
 }
 
 // ==================== 生命周期与监听 ====================
 onMounted(async () => {
   const token = localStorage.getItem('game_token')
-  if (!token) {
-    await startGame()
-  }
+  if (!token) await startGame()
 
-  // 恢复全局通关状态
   if (getGameCompleted()) {
     gameCompleted.value = true
     await loadEndingAssets()
     return
   }
 
-  // 初始化第一关
+  await restoreCachedBgm()
   await loadPuzzle(props.level)
   await loadLocalClue(props.level)
 })
@@ -163,7 +211,7 @@ async function loadPuzzle(level) {
     currentContent.value = data.content
     updateMaxLevel(level)
 
-    // 【核心优化】根据后端返回的 bgm 参数切换背景音乐
+    // 根据后端返回的 bgm 参数切换背景音乐
     if (data.bgm) {
       await switchBgm(data.bgm)
     }
@@ -191,7 +239,6 @@ async function loadLocalClue(level) {
       currentObjectURL = URL.createObjectURL(cached)
       clueImageUrl.value = currentObjectURL
     } else if (typeof cached === 'string') {
-      // 降级：存储的是原始 URL
       clueImageUrl.value = cached
     }
   } catch (error) {
@@ -212,7 +259,6 @@ async function cacheImageAndNavigate(url, backendHash, nextLevel) {
     const localHash = localStorage.getItem(`clue_hash_${nextLevel}`)
 
     if (cached instanceof Blob && localHash === backendHash) {
-      // 缓存命中，直接跳转
       router.push(`/puzzle/${nextLevel}`)
       result.value = ''
       return
@@ -255,8 +301,10 @@ async function cacheEndingAssets(url, backendHash) {
   }
 }
 
+// 加载通关结局资源（图片 + 音乐）
 async function loadEndingAssets() {
   try {
+    // 加载结局图片
     const cached = await getClueImageBlob('ending')
     if (cached instanceof Blob) {
       if (endingObjectURL) URL.revokeObjectURL(endingObjectURL)
@@ -264,6 +312,14 @@ async function loadEndingAssets() {
       endingImageUrl.value = endingObjectURL
     } else {
       endingImageUrl.value = getEndingImage()
+    }
+
+    // 加载结局音乐（从 IndexedDB 缓存读取并播放）
+    const musicBlob = await getClueImageBlob('endingMusic')
+    if (musicBlob instanceof Blob) {
+      const musicUrl = URL.createObjectURL(musicBlob)
+      // 不缓存临时 Blob URL，避免刷新后失效
+      await switchBgm({ file: musicUrl }, true)
     }
   } catch (e) {
     endingImageUrl.value = getEndingImage()
@@ -298,16 +354,16 @@ async function handleSubmit() {
 
       // 缓存结局图片
       await cacheEndingAssets(data.endingImageUrl, data.endingImageHash)
+
+      // 如果有结局音乐，先缓存到 IndexedDB
+      if (data.endingMusicUrl) {
+        await cacheEndingMusic(data.endingMusicUrl)
+      }
+
       setGameCompleted(data.endingImageUrl)
       gameCompleted.value = true
+      // 统一加载结局资源（图片 + 音乐，音乐从缓存读取并播放）
       await loadEndingAssets()
-
-      // 播放结局专属音乐（一次性音效，不影响背景音乐）
-      if (data.endingMusicUrl) {
-        const audio = new Audio(data.endingMusicUrl)
-        audio.volume = 0.8
-        audio.play().catch(() => console.log('浏览器阻止了自动播放'))
-      }
       return
     }
 
@@ -319,6 +375,8 @@ async function handleSubmit() {
       // 如果后端返回了下一关的 BGM 参数，可提前切换背景音乐
       if (data.nextBgm) {
         await switchBgm(data.nextBgm)
+      } else {
+        await switchBgm(null)
       }
 
       // 缓存线索图并跳转

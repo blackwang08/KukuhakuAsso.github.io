@@ -37,6 +37,10 @@ function changeBgm(musicData) {
   audioPlayerRef.value?.changePlayMusic(musicData)
 }
 
+function playDefault() {
+  audioPlayerRef.value?.playDefault()
+}
+
 // 初始化夜间模式
 onMounted(() => {
   const saved = localStorage.getItem('darkMode')
@@ -55,6 +59,7 @@ watchEffect(() => {
 provide('changeBgm', changeBgm)
 provide('isBgmPlaying', isBgmPlaying)
 provide('volume', volume)
-provide('playBgm', playBgm)      // 让 Header 可以开启 BGM
+provide('playBgm', playBgm)
+provide('playDefault',playDefault )
 </script>
 

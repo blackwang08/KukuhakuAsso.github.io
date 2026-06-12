@@ -8,35 +8,34 @@
             <button class="icon-btn" @click="$emit('toggle-bgm')">
                 {{ isBgmPlaying ? '🎵 BGM: 开' : '🔇 BGM: 关' }}
             </button>
-            <button class="icon-btn" @click="$emit('toggle-dark')">
-                {{ isDark ? '🌙 夜间' : '🌞 浅色' }}
+
+            <!-- 主题按钮：点击立刻切换，刷新后恢复跟随系统 -->
+            <button class="icon-btn" @click="toggleDark()">
+                {{ isDark ? '🌙 深色' : '🌞 浅色' }}
             </button>
         </div>
     </header>
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { useDark, useToggle } from '@vueuse/core'
 
+defineProps({ isBgmPlaying: Boolean })
+defineEmits(['toggle-bgm'])
 
-// 接收来自 App.vue 的状态
-defineProps({
-    isBgmPlaying: {
-        type: Boolean,
-        required: true
-    },
-    isDark: {
-        type: Boolean,
-        required: true
-    }
+const isDark = useDark({
+    selector: 'html',
+    attribute: 'class',
+    valueDark: 'dark',          // 暗色时添加 dark 类
+    valueLight: 'light',        // 亮色时添加 light 类（防止系统暗色覆盖）
+    storageKey: null,           // 不持久化，刷新后重置
 })
 
-// 声明向外派发的事件
-defineEmits(['toggle-bgm', 'toggle-dark'])
+const toggleDark = useToggle(isDark)
 
-// 💡 动态获取环境变量，如果未定义则兜底到 "/"
 const homeUrl = import.meta.env.VITE_HOME_URL || '/'
 </script>
+
 
 <style scoped>
 .app-header {

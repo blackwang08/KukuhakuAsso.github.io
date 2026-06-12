@@ -1,13 +1,31 @@
 <template>
   <article>
     <h1>{{ currentTitle }}</h1>
+
+    <PuzzleNavigation :current-level="currentLevel" :max-level="maxUnlockedLevel" :visible="!gameCompleted"
+      @navigate="goToLevel" />
+
     <div v-html="currentContent"></div>
 
     <div v-if="clueImageUrl && !gameCompleted" class="clue-display">
-      <img :src="clueImageUrl" alt="线索图片" style="max-width: 100%; border-radius: 8px;" />
+      <!-- 正常显示图片 -->
+      <img v-if="!clueImageError" :src="clueImageUrl" alt="线索图片" style="max-width: 100%; border-radius: 8px;"
+        @error="clueImageError = true" />
+
+      <!-- 图片加载失败时的提示 -->
+      <div v-else class="clue-error">
+        <p>⚠️ 线索图片加载失败，可能因缓存失效或网络问题。</p>
+        <div class="clue-error-actions">
+          <button class="nav-btn" @click="retryLoadClue">🔄 重新加载</button>
+          <button class="nav-btn" :disabled="currentLevel <= 1" @click="goToLevel(currentLevel - 1)">
+            ← 回上一关重新获取
+          </button>
+        </div>
+      </div>
     </div>
 
     <div v-if="!gameCompleted" style="margin-top: 2rem;">
+
       <input type="text" v-model.trim="answer" placeholder="输入答案" style="padding: 0.5rem; width: 260px;"
         @keyup.enter="handleSubmit" />
       <button @click="handleSubmit" :disabled="loading" style="padding: 0.5rem 1rem; margin-left: 0.5rem;">
@@ -26,10 +44,11 @@
 </template>
 
 <script setup>
-import { ref, onMounted, watch, onBeforeUnmount } from 'vue'
+import { ref, onMounted, watch, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { validateAndNormalize } from '../utils/verifierGuard.js'
 import { startGame, fetchPuzzle, checkAnswer } from '../utils/authFetch.js'
+import PuzzleNavigation from '@/components/puzzleNavigation.vue'
 
 // 引入 IndexedDB 存储管理函数
 import {
@@ -41,12 +60,33 @@ import {
   setGameCompleted
 } from '../utils/storage.js'
 
+const clueImageError = ref(false)
+
 const route = useRoute()
 const router = useRouter()
 
 const props = defineProps({
   level: { type: [String, Number], required: true }
 })
+
+const currentLevel = computed(() => parseInt(props.level))
+
+function goToLevel(level) {
+  if (level < 1) return
+  router.push(`/puzzle/${level}`)
+}
+
+const maxUnlockedLevel = ref(
+  parseInt(localStorage.getItem('puzzle_max_unlocked')) || 1
+)
+
+// 更新并持久化最高解锁关卡
+function updateMaxLevel(level) {
+  if (level > maxUnlockedLevel.value) {
+    maxUnlockedLevel.value = level
+    localStorage.setItem('puzzle_max_unlocked', level)
+  }
+}
 
 // ---------- 全局累积状态 ----------
 const gameCompleted = ref(false)
@@ -130,6 +170,7 @@ async function loadPuzzle(level) {
     const data = await fetchPuzzle(level)
     currentTitle.value = data.title
     currentContent.value = data.content
+    updateMaxLevel(level)
   } catch (e) {
     if (e.message === '无权限访问该关卡') {
       router.push('/puzzle/1')
@@ -143,6 +184,7 @@ async function loadPuzzle(level) {
 async function loadLocalClue(level) {
   revokeLocalObjectURL()
   clueImageUrl.value = ''
+  clueImageError.value = false
 
   try {
     const cachedData = await getClueImageBlob(level)
@@ -157,6 +199,13 @@ async function loadLocalClue(level) {
   } catch (error) {
     console.error('从 IndexedDB 读取缓存图片失败:', error)
   }
+}
+
+async function retryLoadClue() {
+  clueImageError.value = false
+  // 短暂延迟确保状态重置已应用，同时避免瞬间重复报错
+  await nextTick()
+  loadLocalClue(props.level)
 }
 
 async function cacheImageAndNavigate(url, backendHash, nextLevel) {
@@ -174,7 +223,7 @@ async function cacheImageAndNavigate(url, backendHash, nextLevel) {
     const blob = await response.blob()
 
 
-    //计算文件hash
+    //可选计算文件hash
 
     // 存储新 Blob，同步更新 Hash
     await saveClueImageBlob(nextLevel, blob)
@@ -190,6 +239,7 @@ async function cacheImageAndNavigate(url, backendHash, nextLevel) {
     localStorage.removeItem(`clue_hash_${nextLevel}`)
   } finally {
     router.push(`/puzzle/${nextLevel}`)
+    result.value = ''
   }
 }
 
@@ -263,7 +313,7 @@ async function handleSubmit() {
       }
       else if (data.downloadUrl) {
         const nextLevel = currentLevel + 1
-
+        updateMaxLevel(nextLevel)
         await cacheImageAndNavigate(data.downloadUrl, data.fileHash, nextLevel)
       }
     }
@@ -275,3 +325,39 @@ async function handleSubmit() {
   }
 }
 </script>
+
+
+<style scoped>
+.clue-error {
+  background: var(--code-bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 1rem;
+  margin-top: 0.5rem;
+  text-align: center;
+  color: var(--text);
+}
+
+.clue-error p {
+  margin: 0 0 0.75rem;
+}
+
+.clue-error-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.clue-error .nav-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  background: var(--social-bg);
+  color: var(--text-h);
+  border-radius: 6px;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.25s;
+  font-family: var(--sans);
+}
+</style>

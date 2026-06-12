@@ -27,26 +27,24 @@ function startGame() {
 .home-container {
     min-height: 80vh;
     padding: 4rem 2rem 2rem 2rem;
-    /* 顶部留出更多空间，内容偏上 */
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    /* 内容左对齐 */
     background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
     position: relative;
     overflow: hidden;
+    align-items: center;
 }
 
 .content {
     max-width: 600px;
     margin-top: 2rem;
     margin-left: 5vw;
-    /* 不要完全贴边，稍微有点左侧距离 */
 }
 
 .title {
-    font-size: 3rem;
-    margin-bottom: 0.5rem;
+    font-size: clamp(2.2rem, 6vw, 3rem);
+    margin-bottom: 1.5rem;
     color: #2c3e50;
     text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.1);
 }

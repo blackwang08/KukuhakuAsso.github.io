@@ -198,6 +198,7 @@ defineExpose({
     play,
     pause,
     togglePlay,
-    changePlayMusic
+    changePlayMusic,
+    playDefault
 })
 </script>

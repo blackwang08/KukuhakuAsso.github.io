@@ -1,20 +1,30 @@
 <template>
   <div id="app" :class="{ dark: isDark }">
-    <Header :is-bgm-playing="isBgmPlaying" :is-dark="isDark" @toggle-bgm="toggleBgm" />
+    <Header @toggle-bgm="toggleBgm" />
     <AudioPlayer ref="audioPlayerRef" />
     <router-view />
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, watchEffect, provide } from 'vue'
+import { ref, watchEffect, provide } from 'vue'
+import { useDark } from '@vueuse/core'
 import Header from './components/header.vue'
 import AudioPlayer from './components/audioPlayer.vue'
 
 const volume = ref(0.75)               // 音量
 const audioPlayerRef = ref(null)
 const isBgmPlaying = ref(false)
-const isDark = ref(false)
+
+// 💡 修复 2：删除了 onMounted 中的手写逻辑，统一使用 VueUse 管理深色模式
+// 这里的配置必须和 header.vue 完全一致！它会自动处理系统偏好(prefers-color-scheme)
+const isDark = useDark({
+  selector: 'html',
+  attribute: 'class',
+  valueDark: 'dark',
+  valueLight: 'light',
+  storageKey: null,
+})
 
 // 开启 BGM 并播放（供 Header 拖动滑块时调用）
 function playBgm() {
@@ -41,25 +51,15 @@ function playDefault() {
   audioPlayerRef.value?.playDefault()
 }
 
-// 初始化夜间模式
-onMounted(() => {
-  const saved = localStorage.getItem('darkMode')
-  if (saved === 'true' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-    isDark.value = true
-    document.documentElement.classList.add('dark')
-  }
-})
-
 // 同步播放状态
 watchEffect(() => {
   isBgmPlaying.value = audioPlayerRef.value?.isPlaying ?? false
 })
 
-// 依赖注入
+// 依赖注入 (这里的 isBgmPlaying 注入给 header.vue 用得正好)
 provide('changeBgm', changeBgm)
 provide('isBgmPlaying', isBgmPlaying)
 provide('volume', volume)
 provide('playBgm', playBgm)
-provide('playDefault',playDefault )
+provide('playDefault', playDefault)
 </script>
-

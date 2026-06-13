@@ -329,7 +329,8 @@ code {
 /* 让所有输入框跟随主题 */
 input,
 textarea,
-select {
+select,
+button {
   background-color: var(--bg);
   color: var(--text);
   border: 1px solid var(--border);
@@ -343,7 +344,8 @@ select {
 
 input:focus,
 textarea:focus,
-select:focus {
+select:focus,
+button:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 2px var(--accent-bg);
 }
@@ -352,4 +354,12 @@ select:focus {
 ::placeholder {
   color: var(--text);
   opacity: 0.5;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:hover {
+  border-color: var(--accent-border);
 }

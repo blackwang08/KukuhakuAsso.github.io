@@ -6,8 +6,10 @@
 import { ref, onMounted, onUnmounted, inject, watch, computed } from 'vue'
 import defaultBgm from '@/assets/bgm.mp3'
 import musicUrlMap from '@/config/musicList.js'
+import { getObjectHash } from '@/utils/simpleHash.js'
 
 const bgMusic = ref(null)
+const currentBgm = ref(null)
 const isPlaying = ref(false)
 const currentBlobUrl = ref(null)
 
@@ -52,9 +54,13 @@ function revokeCurrentBlob() {
 function playDefault() {
     const audioEl = bgMusic.value
     if (!audioEl) return
+
+    if(currentBgm.value == 'default') return
+
     audioEl.pause()
     revokeCurrentBlob()
     audioEl.src = defaultBgm
+    currentBgm.value = 'default'
     audioEl.load()
     audioEl.play().then(() => { isPlaying.value = true }).catch(() => { isPlaying.value = false })
 }
@@ -98,6 +104,9 @@ const changePlayMusic = async (musicData) => {
         playDefault()
         return
     }
+
+    if(currentBgm.value == musicId) return
+    if(file && currentBgm.value == getObjectHash(file)) return
 
     const audioEl = bgMusic.value
     if (!audioEl) return
@@ -146,6 +155,7 @@ const changePlayMusic = async (musicData) => {
             audioEl.src = plainUrl
         }
 
+        currentBgm.value = musicId || getObjectHash(file)
         audioEl.load()
         // 如果当前处于播放状态，自动续播（根据 isPlaying 判断）
         if (isPlaying.value) {

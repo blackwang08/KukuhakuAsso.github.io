@@ -39,6 +39,7 @@
       <img v-if="endingImageUrl" :src="endingImageUrl" alt="恭喜通关" style="max-width: 100%; border-radius: 8px;" />
       <p v-else class="loading-text">正在从本地保险箱加载大结局真相...</p>
     </div>
+    <resetButton :game-completed="gameCompleted" :visible="gameCompleted" @reset="resetGame" />
   </article>
 </template>
 
@@ -48,6 +49,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { validateAndNormalize } from '../utils/verifierGuard.js'
 import { startGame, fetchPuzzle, checkAnswer } from '../utils/authFetch.js'
 import PuzzleNavigation from '@/components/puzzleNavigation.vue'
+import resetButton from '@/components/reset.vue'
 import {
   getClueImageBlob,
   saveClueImageBlob,
@@ -89,6 +91,15 @@ const changeBgm = inject('changeBgm', null)
 const playDefault = inject('playDefault', null)
 
 // ==================== 工具函数 ====================
+function resetGame() {
+  if (confirm('确定要重置游戏吗？这将清除所有进度和缓存。')) {
+    localStorage.clear()
+    location.reload()
+    indexedDB.deleteDatabase('GameImageDB')
+    router.push('/')
+  }
+}
+
 function goToLevel(level) {
   if (level < 0) return
   router.push(`/puzzle/${level}`)
@@ -318,6 +329,9 @@ async function cacheEndingAssets(url, backendHash) {
 // 加载通关结局资源（图片 + 音乐）
 async function loadEndingAssets() {
   try {
+    currentTitle.value = '恭喜通关'
+    currentContent.value = '<p>你已成功解锁结局</p>'
+
     // 加载结局图片
     const cached = await getClueImageBlob('ending')
     if (cached instanceof Blob) {

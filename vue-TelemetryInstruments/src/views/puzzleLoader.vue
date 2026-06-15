@@ -39,6 +39,7 @@
       <img v-if="endingImageUrl" :src="endingImageUrl" alt="恭喜通关" style="max-width: 100%; border-radius: 8px;" />
       <p v-else class="loading-text">正在从本地保险箱加载大结局真相...</p>
     </div>
+    <resetButton :game-completed="gameCompleted" :visible="gameCompleted" @reset="resetGame" />
   </article>
 </template>
 
@@ -48,6 +49,7 @@ import { useRoute, useRouter } from 'vue-router'
 import { validateAndNormalize } from '../utils/verifierGuard.js'
 import { startGame, fetchPuzzle, checkAnswer } from '../utils/authFetch.js'
 import PuzzleNavigation from '@/components/puzzleNavigation.vue'
+import resetButton from '@/components/reset.vue'
 import {
   getClueImageBlob,
   saveClueImageBlob,
@@ -89,6 +91,15 @@ const changeBgm = inject('changeBgm', null)
 const playDefault = inject('playDefault', null)
 
 // ==================== 工具函数 ====================
+function resetGame() {
+  if (confirm('确定要重置游戏吗？这将清除所有进度和缓存。')) {
+    localStorage.clear()
+    location.reload()
+    indexedDB.deleteDatabase('GameImageDB')
+    router.push('/')
+  }
+}
+
 function goToLevel(level) {
   if (level < 0) return
   router.push(`/puzzle/${level}`)
@@ -142,9 +153,21 @@ function cacheBgmConfig(bgmConfig) {
   }
 }
 
+function cacheFinalBgmConfig(bgmConfig) {
+  if (!bgmConfig) {
+    localStorage.removeItem('final_bgm_config')
+    return
+  }
+  try {
+    localStorage.setItem('final_bgm_config', JSON.stringify(bgmConfig))
+  } catch (e) {
+    console.warn('缓存 BGM 配置失败', e)
+  }
+}
+
 // 从 localStorage 恢复 BGM 配置
-async function restoreCachedBgm() {
-  const cached = localStorage.getItem('last_bgm_config')
+async function restoreCachedBgm(config='last_bgm_config') {
+  const cached = localStorage.getItem(config)
   if (cached) {
     try {
       const config = JSON.parse(cached)
@@ -214,7 +237,7 @@ async function loadPuzzle(level) {
     // 根据后端返回的 bgm 参数切换背景音乐
     if (data.bgm) {
       await switchBgm(data.bgm)
-    }else {
+    } else {
       await switchBgm(null)
     }
   } catch (e) {
@@ -306,6 +329,9 @@ async function cacheEndingAssets(url, backendHash) {
 // 加载通关结局资源（图片 + 音乐）
 async function loadEndingAssets() {
   try {
+    currentTitle.value = '恭喜通关'
+    currentContent.value = '<p>你已成功解锁结局</p>'
+
     // 加载结局图片
     const cached = await getClueImageBlob('ending')
     if (cached instanceof Blob) {
@@ -317,32 +343,55 @@ async function loadEndingAssets() {
     }
 
     // 加载结局音乐（从 IndexedDB 缓存读取并播放）
-    let musicUrl = null;
+    // let musicUrl = null;
+    // try {
+    //   const musicBlob = await getClueImageBlob('endingMusic');
+    //   if (musicBlob instanceof Blob) {
+    //     musicUrl = URL.createObjectURL(musicBlob);
+    //   } else {
+    //     throw new Error('No blob');
+    //   }
+    // } catch (e) {
+    //   // 缓存失效 → 从后端重新获取临时链接
+    //   console.log('结局音乐缓存失效，尝试从服务器重新获取...');
+    //   try {
+    //     const assets = await fetchEndingAssets();
+    //     if (assets.endingMusicUrl) {
+    //       musicUrl = assets.endingMusicUrl;
+    //       // 顺便重新下载并缓存，供本次会话使用（不强制依赖）
+    //       cacheEndingMusic(assets.endingMusicUrl).catch(() => { });
+    //     }
+    //   } catch (err) {
+    //     console.error('重新获取结局音乐失败:', err);
+    //   }
+    // }
+
+    // if (musicUrl) {
+    //   await switchBgm({ file: musicUrl }, true);
+    // }
+
+    // 加载结局音乐, 改为获取密钥解码
+    let music = null
     try {
-      const musicBlob = await getClueImageBlob('endingMusic');
-      if (musicBlob instanceof Blob) {
-        musicUrl = URL.createObjectURL(musicBlob);
-      } else {
-        throw new Error('No blob');
-      }
+      music = restoreCachedBgm('final_bgm_config')
     } catch (e) {
-      // 缓存失效 → 从后端重新获取临时链接
-      console.log('结局音乐缓存失效，尝试从服务器重新获取...');
+      console.error('结局音乐解码失败:', e)
       try {
-        const assets = await fetchEndingAssets();
-        if (assets.endingMusicUrl) {
-          musicUrl = assets.endingMusicUrl;
-          // 顺便重新下载并缓存，供本次会话使用（不强制依赖）
-          cacheEndingMusic(assets.endingMusicUrl).catch(() => { });
+        const assets = await fetchEndingAssets()
+        if (assets.finalBgm) {
+          music = assets.finalBgm
+          cacheFinalBgmConfig(assets.finalBgm)
         }
-      } catch (err) {
-        console.error('重新获取结局音乐失败:', err);
+      }
+      catch (err) {
+        console.error('重新获取结局音乐失败:', err)
       }
     }
 
-    if (musicUrl) {
-      await switchBgm({ file: musicUrl }, true);
+    if (music) {
+      await switchBgm(music)
     }
+
   } catch (e) {
     endingImageUrl.value = getEndingImage()
   }
@@ -377,9 +426,10 @@ async function handleSubmit() {
       // 缓存结局图片
       await cacheEndingAssets(data.endingImageUrl, data.endingImageHash)
 
-      // 如果有结局音乐，先缓存到 IndexedDB
-      if (data.endingMusicUrl) {
-        await cacheEndingMusic(data.endingMusicUrl)
+      // 如果有结局音乐，先缓存到config
+      if (data.finalBgm) {
+        await cacheFinalBgmConfig(data.finalBgm)
+        // await cacheEndingMusic(data.endingMusicUrl)
       }
 
       setGameCompleted(data.endingImageUrl)

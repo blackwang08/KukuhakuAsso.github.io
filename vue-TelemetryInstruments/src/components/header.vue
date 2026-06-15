@@ -9,7 +9,6 @@
                 {{ isBgmPlaying ? '🎵 BGM: 开' : '🔇 BGM: 关' }}
             </button>
 
-            <!-- 音量控制：滑块 + 滚轮 -->
             <div class="volume-control" @wheel.prevent="onVolumeWheel">
                 <input type="range" min="0" max="1" step="0.01" v-model="sliderVolume" class="volume-slider" />
             </div>
@@ -25,13 +24,20 @@
 import { inject, computed } from 'vue'
 import { useDark, useToggle } from '@vueuse/core'
 
-defineProps({
-    isBgmPlaying: Boolean,
-    isDark: Boolean
-})
+// 仅保留事件发射，因为 BGM 切换逻辑似乎在父组件
 defineEmits(['toggle-bgm'])
 
-// 注入全局状态和方法
+// 💡 修复 1：使用 useDark 返回的响应式 ref，直接驱动模板更新
+const isDark = useDark({
+    selector: 'html',
+    attribute: 'class',
+    valueDark: 'dark',
+    valueLight: 'light',
+    storageKey: null,
+})
+const toggleDark = useToggle(isDark)
+
+// 💡 修复 2：删除了 defineProps 中的 isBgmPlaying，直接使用 inject 的状态，避免命名冲突
 const volume = inject('volume')
 const isBgmPlaying = inject('isBgmPlaying')
 const playBgm = inject('playBgm')
@@ -61,17 +67,7 @@ function onVolumeWheel(e) {
 
     const newVal = Math.min(1, Math.max(0, volume.value + delta))
     volume.value = Math.round(newVal * 100) / 100
-
-
 }
-
-const toggleDark = useToggle(useDark({
-    selector: 'html',
-    attribute: 'class',
-    valueDark: 'dark',
-    valueLight: 'light',
-    storageKey: null,
-}))
 
 const homeUrl = import.meta.env.VITE_HOME_URL || '/'
 </script>

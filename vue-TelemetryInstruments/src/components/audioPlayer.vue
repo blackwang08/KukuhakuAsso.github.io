@@ -76,6 +76,7 @@ const tryPlayMusic = async () => {
  * 切换背景音乐（由外部调用）
  */
 const changePlayMusic = async (musicData) => {
+
     if (!musicData) {
         playDefault()
         return
@@ -108,6 +109,7 @@ const changePlayMusic = async (musicData) => {
 
     try {
         if (isEncrypted) {
+
             if (!keyBase64 || !ivBase64) {
                 console.error('加密文件缺少 keyBase64 或 ivBase64')
                 playDefault()

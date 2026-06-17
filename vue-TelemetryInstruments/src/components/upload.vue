@@ -3,20 +3,25 @@
         <Transition name="modal">
             <div v-if="visible" class="modal-overlay" @click.self="close">
                 <div class="modal-content">
-                    <h2>恭喜通关！请填写领奖信息，可能会有实物奖品发放</h2>
+                    <h2>恭喜通关！请填写联系方式，可能会有实物奖品发放</h2>
                     <form @submit.prevent="handleSubmit">
                         <div class="form-item">
-                            <label>姓名</label>
-                            <input v-model.trim="form.name" placeholder="请输入收件人姓名" required />
+                            <label>称呼</label>
+                            <input v-model.trim="form.name" placeholder="请输入个人称呼" required />
                         </div>
                         <div class="form-item">
-                            <label>地址</label>
-                            <input v-model.trim="form.address" placeholder="请输入收货地址" required />
+                            <label>队伍名</label>
+                            <input v-model.trim="form.team" placeholder="请输入队伍名，可留空" />
                         </div>
                         <div class="form-item">
-                            <label>电话</label>
-                            <input v-model.trim="form.phone" placeholder="请输入联系电话" required />
+                            <label>联系邮箱</label>
+                            <input v-model.trim="form.mail" placeholder="请输入可用的邮箱账号"/>
                         </div>
+                        <div class="form-item">
+                            <label>其他联系方式</label>
+                            <input v-model.trim="form.contact" placeholder="请输入其他联系方式，比如QQ或b站UID"/>
+                        </div>
+                        
                         <p v-if="errorMsg" class="error-msg">{{ errorMsg }}</p>
                         <p v-if="successMsg" class="success-msg">{{ successMsg }}</p>
                         <div class="modal-actions">
@@ -41,10 +46,11 @@ const props = defineProps({
 })
 const emit = defineEmits(['update:visible', 'submitted'])
 
-const form = reactive({
+const form = ref({
     name: '',
-    address: '',
-    phone: ''
+    team: '',
+    mail: '',
+    contact: ''
 })
 const submitting = ref(false)
 const errorMsg = ref('')
@@ -53,9 +59,10 @@ const successMsg = ref('')
 // 弹窗打开时重置表单和提示
 watch(() => props.visible, (val) => {
     if (val) {
-        form.name = ''
-        form.address = ''
-        form.phone = ''
+        form.value.name = ''
+        form.value.team = ''
+        form.value.mail = ''
+        form.value.contact = ''
         errorMsg.value = ''
         successMsg.value = ''
     }
@@ -67,13 +74,18 @@ function close() {
 
 async function handleSubmit() {
     // 简单校验
-    if (!form.name || !form.address || !form.phone) {
-        errorMsg.value = '所有字段均为必填'
+    if (!form.value.name || !(form.value.contact || form.value.mail)) {
+        errorMsg.value = '请填写称呼和至少一种联系方式'
         return
     }
-    if (!/^1\d{10}$/.test(form.phone)) {
-        errorMsg.value = '请输入有效的手机号码'
-        return
+
+    // 校验邮箱
+    if(form.value.mail != ''){
+        const mailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!mailRegex.test(form.value.mail)) {
+            errorMsg.value = '请输入有效的邮箱地址'
+            return
+        }
     }
 
     submitting.value = true
@@ -81,7 +93,7 @@ async function handleSubmit() {
     successMsg.value = ''
 
     try {
-        await uploadInfo(form.name, form.address, form.phone)
+        await uploadInfo(form.value)
         successMsg.value = '信息提交成功！感谢你的参与。'
         // 标记已提交，持久化到 localStorage
         localStorage.setItem('puzzle_info_submitted', 'true')

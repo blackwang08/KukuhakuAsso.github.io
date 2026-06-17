@@ -62,10 +62,10 @@ export async function checkAnswer(level, answer) {
 }
 
 
-export async function uploadInfo(name, address, phone) {
+export async function uploadInfo(info) {
     const res = await authFetch("/api/game/finished", {
         method: "POST",
-        body: JSON.stringify({ name, address, phone }),
+        body: JSON.stringify(info),
     })
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));

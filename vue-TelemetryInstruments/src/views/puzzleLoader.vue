@@ -55,12 +55,15 @@
       <p v-if="endingAssetTimeout && !endingImageError && !endingImageTimeout" class="timeout-text">
         结局资源获取超时，请重置游戏重试。
       </p>
-      <div v-if="!infoSubmitted" style="margin-top: 1.5rem;">
-        <button class="submit-info-btn" @click="showInfoModal = true">
+      <div v-if="rewardCheck" style="margin-top: 1.5rem;">
+        <button v-if="!infoSubmitted" class="submit-info-btn" @click="showInfoModal = true">
           🎁 填写领奖信息
         </button>
+        <div v-else>
+          <p style="color: green; margin: 0.5rem 0;">✅ 信息已提交</p>
+          <button class="submit-info-btn" @click="showInfoModal = true">🔄 重新提交</button>
+        </div>
       </div>
-      <p v-else style="color: green; margin-top: 1rem;">✅ 信息已提交</p>
     </div>
     <resetButton :game-completed="gameCompleted" :visible="gameCompleted" @reset="resetGame" />
     <InfoUploadModal v-model:visible="showInfoModal" @submitted="infoSubmitted = true" />
@@ -71,7 +74,7 @@
 import { inject, ref, onMounted, watch, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { validateAndNormalize } from '../utils/verifierGuard.js'
-import { startGame, fetchPuzzle, checkAnswer } from '../utils/authFetch.js'
+import { startGame, fetchPuzzle, checkAnswer, fetchEndingAssets } from '../utils/authFetch.js'
 import PuzzleNavigation from '@/components/puzzleNavigation.vue'
 import resetButton from '@/components/reset.vue'
 import InfoUploadModal from '@/components/upload.vue'
@@ -94,6 +97,7 @@ const endingImageUrl = ref('')
 const maxUnlockedLevel = ref(
   parseInt(localStorage.getItem('puzzle_max_unlocked')) || 0
 )
+const rewardCheck = ref(false)
 const showInfoModal = ref(false)
 const infoSubmitted = ref(localStorage.getItem('puzzle_info_submitted') === 'true')
 
@@ -482,6 +486,14 @@ async function loadEndingAssets() {
       await switchBgm(music)
     }
 
+    if (!rewardCheck.value) {
+      rewardCheck.value = (await fetchEndingAssets()).reward || false
+      console.log('剩余奖励', rewardCheck.value)
+      if (rewardCheck.value != true) {
+        rewardCheck.value = false
+      }
+    }
+
     if (endingAssetTimer) {
       clearTimeout(endingAssetTimer)
       endingAssetTimer = null
@@ -517,6 +529,10 @@ async function handleSubmit() {
     // ---------- 通关结局 ----------
     if (data.endingImageUrl) {
       result.value = '🎉 正在解锁最终真相...'
+
+      if (data.reward) {
+        rewardCheck.value = true
+      }
 
       // 缓存结局图片
       await cacheEndingAssets(data.endingImageUrl, data.endingImageHash)

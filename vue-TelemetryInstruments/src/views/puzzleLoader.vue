@@ -100,6 +100,7 @@ const maxUnlockedLevel = ref(
 const rewardCheck = ref(false)
 const showInfoModal = ref(false)
 const infoSubmitted = ref(localStorage.getItem('puzzle_info_submitted') === 'true')
+let isRestartingAfterExpiry = false;
 
 // ==================== 当前关卡状态 ====================
 const currentTitle = ref('加载中...')
@@ -151,16 +152,55 @@ const changeBgm = inject('changeBgm', null)
 const playDefault = inject('playDefault', null)
 function resetGame() {
   if (confirm('确定要重置游戏吗？这将清除所有进度和缓存。')) {
-    localStorage.clear()
-    location.reload()
+    const token = localStorage.getItem('game_token');
+    localStorage.clear();
+    if (token) {
+      localStorage.setItem('game_token', token);
+    }
     indexedDB.deleteDatabase('GameImageDB')
-    router.push('/')
+
+    gameCompleted.value = false
+    endingImageUrl.value = ''
+    endingImageError.value = false
+    endingImageTimeout.value = false
+    endingAssetTimeout.value = false
+    maxUnlockedLevel.value = 0
+    rewardCheck.value = false
+    infoSubmitted.value = false
+
+    // 清除结局相关的 ObjectURL
+    if (endingObjectURL) {
+      URL.revokeObjectURL(endingObjectURL)
+      endingObjectURL = null
+    }
+    clearEndingImgTimer()
+    if (endingAssetTimer) {
+      clearTimeout(endingAssetTimer)
+      endingAssetTimer = null
+    }
+
+    // 清除当前关卡的图片 ObjectURL
+    revokeLocalObjectURL()
+    clueImageUrl.value = ''
+    clueImageError.value = false
+
+    // 重置输入/提示状态
+    answer.value = ''
+    result.value = ''
+    isSuccess.value = false
+    loading.value = false
+
+    // 4. 恢复默认背景音乐
+    if (playDefault) playDefault()
+
+    goToLevel(0)
   }
 }
 
 function goToLevel(level) {
   if (level < 0) return
   router.push(`/puzzle/${level}`)
+  console.log('跳转至关卡', level)
 }
 
 function updateMaxLevel(level) {
@@ -335,7 +375,14 @@ async function loadPuzzle(level) {
       await switchBgm(null)
     }
   } catch (e) {
-    if (e.message === '无权限访问该关卡') {
+
+    if (e instanceof TokenExpiredError) {
+      if (confirm('游戏凭证已过期，需要重新开始。\n点击“确定”将清除所有进度并获取新凭证。')) {
+        await restartGameDueToExpiry()
+      } else {
+        alert('凭证已失效，后续操作将无法正常进行。你可以点击页面上的重置按钮或刷新页面重新开始。')
+      }
+    } else if (e.message === '无权限访问该关卡') {
       router.push('/puzzle/0')
     } else {
       currentTitle.value = '错误'
@@ -559,10 +606,64 @@ async function handleSubmit() {
       await cacheImageAndNavigate(data.clueFileUrl, data.clueFileHash, nextLevel)
     }
   } catch (error) {
+    if (e instanceof TokenExpiredError) {
+      if (confirm('游戏凭证已过期，需要重新开始。\n点击“确定”将清除所有进度并获取新凭证。')) {
+        await restartGameDueToExpiry()
+      } else {
+        alert('凭证已失效，后续操作将无法正常进行。你可以点击页面上的重置按钮或刷新页面重新开始。')
+      }
+    }
     console.error('答案提交异常:', error)
     result.value = '网络错误，请检查网络后重试'
   } finally {
     loading.value = false
+  }
+}
+
+async function restartGameDueToExpiry() {
+  if (isRestartingAfterExpiry) return;
+  isRestartingAfterExpiry = true;
+
+  try {
+    localStorage.clear();
+    indexedDB.deleteDatabase('GameImageDB');
+
+    gameCompleted.value = false;
+    endingImageUrl.value = '';
+    endingImageError.value = false;
+    endingImageTimeout.value = false;
+    endingAssetTimeout.value = false;
+    maxUnlockedLevel.value = 0;
+    rewardCheck.value = false;
+    infoSubmitted.value = false;
+    showInfoModal.value = false;
+    answer.value = '';
+    result.value = '';
+    loading.value = false;
+    isSuccess.value = false;
+
+    revokeLocalObjectURL();
+    if (endingObjectURL) {
+      URL.revokeObjectURL(endingObjectURL);
+      endingObjectURL = null;
+    }
+    clearEndingImgTimer();
+    if (endingAssetTimer) clearTimeout(endingAssetTimer);
+
+    // 获取全新的游戏 token
+    const data = await startGame();
+    if (!data.token) {
+      alert('重新开始失败，请刷新页面重试');
+      return;
+    }
+
+    router.push('/puzzle/0');
+
+  } catch (e) {
+    console.error('重启失败:', e);
+    alert('游戏重启异常，请刷新页面');
+  } finally {
+    isRestartingAfterExpiry = false;
   }
 }
 

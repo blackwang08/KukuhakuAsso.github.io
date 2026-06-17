@@ -36,10 +36,37 @@
 
     <!-- 通关结局界面 -->
     <div v-if="gameCompleted" class="ending">
-      <img v-if="endingImageUrl" :src="endingImageUrl" alt="恭喜通关" style="max-width: 100%; border-radius: 8px;" />
-      <p v-else class="loading-text">正在从本地保险箱加载大结局真相...</p>
+      <!-- 图片正常加载且未超时 -->
+      <img v-if="endingImageUrl && !endingImageError" :src="endingImageUrl" alt="恭喜通关"
+        style="max-width: 100%; border-radius: 8px;" @load="onEndingImageLoad" @error="onEndingImageError" />
+      <!-- 图片加载中（URL 已有，但图片还没 load） -->
+      <p v-else-if="endingImageUrl && !endingImageError && !endingImageTimeout" class="loading-text">
+        正在加载结局图片...
+      </p>
+      <!-- 超时或异常提示 -->
+      <p v-if="endingImageError || endingImageTimeout" class="timeout-text">
+        ⚠️ 结局图片加载失败或超时，请尝试重置游戏。
+      </p>
+      <!-- 根本没有任何图片 URL 且未超时（仍在异步获取中） -->
+      <p v-else-if="!endingImageUrl && !endingAssetTimeout" class="loading-text">
+        正在准备结局资源...
+      </p>
+      <!-- 资源获取总超时 -->
+      <p v-if="endingAssetTimeout && !endingImageError && !endingImageTimeout" class="timeout-text">
+        结局资源获取超时，请重置游戏重试。
+      </p>
+      <div v-if="rewardCheck" style="margin-top: 1.5rem;">
+        <button v-if="!infoSubmitted" class="submit-info-btn" @click="showInfoModal = true">
+          🎁 填写领奖信息
+        </button>
+        <div v-else>
+          <p style="color: green; margin: 0.5rem 0;">✅ 信息已提交</p>
+          <button class="submit-info-btn" @click="showInfoModal = true">🔄 重新提交</button>
+        </div>
+      </div>
     </div>
     <resetButton :game-completed="gameCompleted" :visible="gameCompleted" @reset="resetGame" />
+    <InfoUploadModal v-model:visible="showInfoModal" @submitted="infoSubmitted = true" />
   </article>
 </template>
 
@@ -47,9 +74,10 @@
 import { inject, ref, onMounted, watch, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { validateAndNormalize } from '../utils/verifierGuard.js'
-import { startGame, fetchPuzzle, checkAnswer } from '../utils/authFetch.js'
+import { startGame, fetchPuzzle, checkAnswer, fetchEndingAssets } from '../utils/authFetch.js'
 import PuzzleNavigation from '@/components/puzzleNavigation.vue'
 import resetButton from '@/components/reset.vue'
+import InfoUploadModal from '@/components/upload.vue'
 import {
   getClueImageBlob,
   saveClueImageBlob,
@@ -69,6 +97,9 @@ const endingImageUrl = ref('')
 const maxUnlockedLevel = ref(
   parseInt(localStorage.getItem('puzzle_max_unlocked')) || 0
 )
+const rewardCheck = ref(false)
+const showInfoModal = ref(false)
+const infoSubmitted = ref(localStorage.getItem('puzzle_info_submitted') === 'true')
 
 // ==================== 当前关卡状态 ====================
 const currentTitle = ref('加载中...')
@@ -86,11 +117,38 @@ const clueImageError = ref(false)
 let currentObjectURL = null
 let endingObjectURL = null
 
+// ==================== 结局状态 ====================
+// 结局图片加载状态
+const endingImageError = ref(false)      // img 的 error 事件触发
+const endingImageTimeout = ref(false)    // img 加载超时（src 存在但未 load）
+let endingImgTimer = null                // 超时定时器
+
+// 结局资源整体获取超时（URL 始终为空时）
+const endingAssetTimeout = ref(false)
+let endingAssetTimer = null
+
+
+
+// ==================== 工具函数 ====================
+function onEndingImageLoad() {
+  clearEndingImgTimer()
+}
+
+function onEndingImageError() {
+  clearEndingImgTimer()
+  endingImageError.value = true
+}
+
+function clearEndingImgTimer() {
+  if (endingImgTimer) {
+    clearTimeout(endingImgTimer)
+    endingImgTimer = null
+  }
+}
+
 // 注入的背景音乐切换方法
 const changeBgm = inject('changeBgm', null)
 const playDefault = inject('playDefault', null)
-
-// ==================== 工具函数 ====================
 function resetGame() {
   if (confirm('确定要重置游戏吗？这将清除所有进度和缓存。')) {
     localStorage.clear()
@@ -166,7 +224,7 @@ function cacheFinalBgmConfig(bgmConfig) {
 }
 
 // 从 localStorage 恢复 BGM 配置
-async function restoreCachedBgm(config='last_bgm_config') {
+async function restoreCachedBgm(config = 'last_bgm_config') {
   const cached = localStorage.getItem(config)
   if (cached) {
     try {
@@ -202,8 +260,25 @@ onMounted(async () => {
 
   if (getGameCompleted()) {
     gameCompleted.value = true
-    await loadEndingAssets()
+
+    endingAssetTimer = setTimeout(() => {
+      if (!endingImageUrl.value && !endingImageError.value && !endingImageTimeout.value) {
+        endingAssetTimeout.value = true
+        console.warn('结局资源总超时')
+      }
+    }, 60000)
+
+    // 快速校验：如果连缓存都没有，提前标记异常
+    const cached = await getClueImageBlob('ending')
+    if (!cached && !getEndingImage()) {
+      // 没有任何可用图片资源，立即提示
+      endingAssetTimeout.value = true
+      if (endingAssetTimer) clearTimeout(endingAssetTimer)
+    } else {
+      await loadEndingAssets()
+    }
     return
+
   }
 
   await restoreCachedBgm()
@@ -218,12 +293,31 @@ watch(() => props.level, async (newLevel) => {
   }
 })
 
+watch(endingImageUrl, (newUrl) => {
+  // 清除旧的定时器和状态
+  clearEndingImgTimer()
+  endingImageError.value = false
+  endingImageTimeout.value = false
+
+  if (!newUrl) return
+
+  // 启动图片加载超时计时, 30s
+  endingImgTimer = setTimeout(() => {
+    if (!endingImageError.value) {
+      endingImageTimeout.value = true
+      console.warn('结局图片加载超时')
+    }
+  }, 30000)
+})
+
 onBeforeUnmount(() => {
   revokeLocalObjectURL()
   if (endingObjectURL) {
     URL.revokeObjectURL(endingObjectURL)
     endingObjectURL = null
   }
+  clearEndingImgTimer()
+  if (endingAssetTimer) clearTimeout(endingAssetTimer)
 })
 
 // ==================== 关卡数据与音乐加载 ====================
@@ -392,6 +486,19 @@ async function loadEndingAssets() {
       await switchBgm(music)
     }
 
+    if (!rewardCheck.value) {
+      rewardCheck.value = (await fetchEndingAssets()).reward || false
+      console.log('剩余奖励', rewardCheck.value)
+      if (rewardCheck.value != true) {
+        rewardCheck.value = false
+      }
+    }
+
+    if (endingAssetTimer) {
+      clearTimeout(endingAssetTimer)
+      endingAssetTimer = null
+    }
+
   } catch (e) {
     endingImageUrl.value = getEndingImage()
   }
@@ -422,6 +529,10 @@ async function handleSubmit() {
     // ---------- 通关结局 ----------
     if (data.endingImageUrl) {
       result.value = '🎉 正在解锁最终真相...'
+
+      if (data.reward) {
+        rewardCheck.value = true
+      }
 
       // 缓存结局图片
       await cacheEndingAssets(data.endingImageUrl, data.endingImageHash)
@@ -489,5 +600,20 @@ async function handleSubmit() {
   cursor: pointer;
   transition: all 0.25s;
   font-family: var(--sans);
+}
+
+.submit-info-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 0.7rem 1.8rem;
+  border-radius: 30px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.submit-info-btn:hover {
+  transform: scale(1.05);
 }
 </style>

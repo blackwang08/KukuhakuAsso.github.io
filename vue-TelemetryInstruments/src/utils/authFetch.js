@@ -5,7 +5,14 @@ function getToken() {
     return localStorage.getItem("game_token");
 }
 
-// 带认证的 fetch
+export class TokenExpiredError extends Error {
+    constructor(message = "游戏凭证已过期") {
+        super(message);
+        this.name = "TokenExpiredError";
+    }
+}
+
+// 改造后的 authFetch
 export async function authFetch(url, options = {}) {
     const token = getToken();
     const headers = {
@@ -14,8 +21,14 @@ export async function authFetch(url, options = {}) {
         "Content-Type": "application/json",
     };
     const res = await fetch(`${apiBase}${url}`, { ...options, headers });
+
+    if (res.status === 401) {
+        throw new TokenExpiredError();
+    }
+
     return res;
 }
+
 
 // 开始新游戏
 export async function startGame() {

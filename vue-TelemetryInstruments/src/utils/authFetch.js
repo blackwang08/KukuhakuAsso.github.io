@@ -39,10 +39,8 @@ export async function fetchPuzzle(level) {
 
 // 重新获取结局资源
 export async function fetchEndingAssets() {
-    const token = localStorage.getItem("game_token");
-    const res = await fetch("/api/ending/assets", {
-        headers: { Authorization: `Bearer ${token}` },
-    });
+    const res = await authFetch("/api/ending/assets");
+
     if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         throw new Error(err.error || "获取结局资源失败");
@@ -64,3 +62,15 @@ export async function checkAnswer(level, answer) {
 }
 
 
+export async function uploadInfo(name, address, phone) {
+    const res = await authFetch("/api/game/finished", {
+        method: "POST",
+        body: JSON.stringify({ name, address, phone }),
+    })
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.error || "提交信息失败");
+    }
+
+    return res.json();
+}

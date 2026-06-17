@@ -55,8 +55,15 @@
       <p v-if="endingAssetTimeout && !endingImageError && !endingImageTimeout" class="timeout-text">
         结局资源获取超时，请重置游戏重试。
       </p>
+      <div v-if="!infoSubmitted" style="margin-top: 1.5rem;">
+        <button class="submit-info-btn" @click="showInfoModal = true">
+          🎁 填写领奖信息
+        </button>
+      </div>
+      <p v-else style="color: green; margin-top: 1rem;">✅ 信息已提交</p>
     </div>
     <resetButton :game-completed="gameCompleted" :visible="gameCompleted" @reset="resetGame" />
+    <InfoUploadModal v-model:visible="showInfoModal" @submitted="infoSubmitted = true" />
   </article>
 </template>
 
@@ -67,6 +74,7 @@ import { validateAndNormalize } from '../utils/verifierGuard.js'
 import { startGame, fetchPuzzle, checkAnswer } from '../utils/authFetch.js'
 import PuzzleNavigation from '@/components/puzzleNavigation.vue'
 import resetButton from '@/components/reset.vue'
+import InfoUploadModal from '@/components/upload.vue'
 import {
   getClueImageBlob,
   saveClueImageBlob,
@@ -86,6 +94,8 @@ const endingImageUrl = ref('')
 const maxUnlockedLevel = ref(
   parseInt(localStorage.getItem('puzzle_max_unlocked')) || 0
 )
+const showInfoModal = ref(false)
+const infoSubmitted = ref(localStorage.getItem('puzzle_info_submitted') === 'true')
 
 // ==================== 当前关卡状态 ====================
 const currentTitle = ref('加载中...')
@@ -574,5 +584,20 @@ async function handleSubmit() {
   cursor: pointer;
   transition: all 0.25s;
   font-family: var(--sans);
+}
+
+.submit-info-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 0.7rem 1.8rem;
+  border-radius: 30px;
+  font-size: 1.1rem;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.submit-info-btn:hover {
+  transform: scale(1.05);
 }
 </style>

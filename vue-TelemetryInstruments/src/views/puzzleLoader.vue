@@ -74,7 +74,7 @@
 import { inject, ref, onMounted, watch, onBeforeUnmount, computed, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { validateAndNormalize } from '../utils/verifierGuard.js'
-import { startGame, fetchPuzzle, checkAnswer, fetchEndingAssets } from '../utils/authFetch.js'
+import { startGame, fetchPuzzle, checkAnswer, fetchEndingAssets, TokenExpiredError } from '../utils/authFetch.js'
 import PuzzleNavigation from '@/components/puzzleNavigation.vue'
 import resetButton from '@/components/reset.vue'
 import InfoUploadModal from '@/components/upload.vue'

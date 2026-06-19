@@ -4,7 +4,7 @@
         "dir": "vue-TelemetryInstruments",
         "buildCmd": "npm run build",
         "outputDir": "output",
-        "subPath": "vue-telemetry",
+        "subPath": "TelemetryInstruments",
         "devPort": 5175,
         "proxyApi": [
             "/api-base"

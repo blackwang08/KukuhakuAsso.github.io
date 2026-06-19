@@ -12,7 +12,7 @@ hero:
       link: /puzzles
     - theme: alt
       text: 第一题
-      link: /vue-telemetry/
+      link: /TelemetryInstruments/
       target: _self
       rel: external
 

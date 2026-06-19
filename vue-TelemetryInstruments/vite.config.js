@@ -4,7 +4,7 @@ import path from "path";
 
 // https://vite.dev/config/
 export default defineConfig({
-    base: "/vue-telemetry/",
+    base: "/TelemetryInstruments/",
     server: {
         proxy: {
             // 将以 /api-base 开头的请求代理到云函数

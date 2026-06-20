@@ -43,8 +43,9 @@ function toggleBgm() {
 }
 
 // 变更 BGM
-function changeBgm(musicData) {
-  audioPlayerRef.value?.changePlayMusic(musicData)
+function changeBgm(musicData, requestId) {
+  // 传入 requestId，供 audioPlayer 在异步加载完成后判断是否过期
+  audioPlayerRef.value?.changePlayMusic(musicData, requestId)
 }
 
 function playDefault() {

@@ -10,11 +10,7 @@ hero:
     - theme: brand
       text: 谜题页
       link: /puzzles
-    - theme: alt
-      text: 第一题
-      link: /TelemetryInstruments/
-      target: _self
-      rel: external
+
 
 features:
   - title: 关于我们

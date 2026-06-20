@@ -12,6 +12,9 @@ const bgMusic = ref(null)
 const currentBgm = ref(null)
 const isPlaying = ref(false)
 const currentBlobUrl = ref(null)
+// 播放请求 id，确保异步加载的旧请求不会覆盖新的音乐
+let audioRequestCounter = 0
+let currentAudioRequestId = 0
 
 // 注入全局状态
 const volume = inject('volume')               // 用户设定的音量 (0~1)
@@ -81,10 +84,17 @@ const tryPlayMusic = async () => {
 /**
  * 切换背景音乐（由外部调用）
  */
-const changePlayMusic = async (musicData) => {
+const changePlayMusic = async (musicData, requestId) => {
+
+    // 如果外部没有传 requestId，则生成一个用于本次切换
+    if (!requestId) {
+        requestId = ++audioRequestCounter
+    }
+    currentAudioRequestId = requestId
 
     if (!musicData) {
-        playDefault()
+        // 只有当请求仍然为最新时才执行默认播放
+        if (requestId === currentAudioRequestId) playDefault()
         return
     }
 
@@ -144,6 +154,12 @@ const changePlayMusic = async (musicData) => {
 
             const finalMime = mimeType || getMimeType(file)
             const blob = new Blob([decrypted], { type: finalMime })
+            // 在异步操作完成后判断请求是否仍为最新，过期则丢弃
+            if (requestId !== currentAudioRequestId) {
+                // 立即释放临时 blob
+                URL.revokeObjectURL(URL.createObjectURL(blob))
+                return
+            }
             currentBlobUrl.value = URL.createObjectURL(blob)
             audioEl.src = currentBlobUrl.value
         } else {
@@ -155,6 +171,10 @@ const changePlayMusic = async (musicData) => {
             audioEl.src = plainUrl
         }
 
+        // 同样，在设置状态前确认请求仍为最新
+        if (requestId !== currentAudioRequestId) {
+            return
+        }
         currentBgm.value = musicId || getObjectHash(file)
         audioEl.load()
         // 如果当前处于播放状态，自动续播（根据 isPlaying 判断）
@@ -166,7 +186,7 @@ const changePlayMusic = async (musicData) => {
         }
     } catch (err) {
         console.error('音乐切换失败，回退到默认音乐：', err)
-        playDefault()
+        if (requestId === currentAudioRequestId) playDefault()
     }
 }
 

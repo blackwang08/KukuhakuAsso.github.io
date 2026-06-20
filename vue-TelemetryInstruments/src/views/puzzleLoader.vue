@@ -150,6 +150,9 @@ function clearEndingImgTimer() {
 // 注入的背景音乐切换方法
 const changeBgm = inject('changeBgm', null)
 const playDefault = inject('playDefault', null)
+// 请求序号，用于避免并发切换时旧请求覆盖新的缓存
+let bgmRequestCounter = 0
+let currentBgmRequestId = 0
 function resetGame() {
   if (confirm('确定要重置游戏吗？这将清除所有进度和缓存。')) {
     const token = localStorage.getItem('game_token');
@@ -221,16 +224,29 @@ function revokeLocalObjectURL() {
 async function switchBgm(bgmConfig, skipCache = false) {
   if (!changeBgm || !playDefault) return
 
+  // 每次切换分配一个请求 id，以便在异步完成后判断是否为最新请求
+  const reqId = ++bgmRequestCounter
+  currentBgmRequestId = reqId
+
+  // 无配置时播放默认音乐，但仍视为一次切换请求
   if (!bgmConfig) {
     console.log('未设置背景音乐，播放默认音乐中')
-    playDefault()
-    cacheBgmConfig(null)
+    try {
+      await changeBgm(null, reqId)
+    } catch (e) {
+      console.warn('切换背景音乐失败:', e)
+    }
+    // 仅当该请求仍为最新时写缓存，避免旧请求覆盖新配置
+    if (!skipCache && reqId === currentBgmRequestId) {
+      cacheBgmConfig(null)
+    }
     return
   }
 
   try {
-    await changeBgm(bgmConfig)
-    if (!skipCache) {
+    await changeBgm(bgmConfig, reqId)
+    // 仅当该请求仍为最新时写缓存，避免旧请求覆盖新配置
+    if (!skipCache && reqId === currentBgmRequestId) {
       cacheBgmConfig(bgmConfig)
     }
   } catch (e) {
@@ -270,7 +286,8 @@ async function restoreCachedBgm(config = 'last_bgm_config') {
     try {
       const config = JSON.parse(cached)
       if (config && (config.file || config.musicId)) {
-        await switchBgm(config)   // 恢复时正常缓存（但实际上已经是缓存了，不会重复写入）
+        // 恢复缓存时不再写回缓存，避免与并发切换产生覆盖
+        await switchBgm(config, true)
         return
       }
     } catch (e) {

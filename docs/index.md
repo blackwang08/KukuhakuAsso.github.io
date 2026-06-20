@@ -10,6 +10,13 @@ hero:
     - theme: brand
       text: 谜题页
       link: /puzzles
+    - theme: brand
+      text: 文章
+      link: /lore
+    - theme: brand
+      text: 工具
+      link: /tools
+
 
 
 features:

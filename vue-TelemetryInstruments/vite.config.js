@@ -8,7 +8,7 @@ export default defineConfig({
     server: {
         proxy: {
             "/api-base": {
-                target: "https://1438673597-5x3ei6jlni.ap-shanghai.tencentscf.com",
+                target: "https://1438673597-hl571gnj2q.ap-shanghai.tencentscf.com",
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api-base/, ""), // 去掉 /api-base 前缀
             },

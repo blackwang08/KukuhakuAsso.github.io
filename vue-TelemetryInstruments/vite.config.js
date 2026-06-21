@@ -7,9 +7,8 @@ export default defineConfig({
     base: "/TelemetryInstruments/",
     server: {
         proxy: {
-            // 将以 /api-base 开头的请求代理到云函数
             "/api-base": {
-                target: "https://1438673597-gggz8ep6r6.ap-shanghai.tencentscf.com",
+                target: "https://1438673597-5x3ei6jlni.in.ap-shanghai.tencentscf.com",
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api-base/, ""), // 去掉 /api-base 前缀
             },

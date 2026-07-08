@@ -43,13 +43,13 @@ jobs:
 
       - name: Deploy to Tencent CVM via SSH
         uses: easingthemes/ssh-deploy@main
-        env:
+        with:
           SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
           ARGS: "-avzr --delete"
-          SOURCE: "dist-preview/" # 🎯 把编译好的总目录传给服务器
+          SOURCE: "dist-preview/"
           REMOTE_HOST: ${{ secrets.SERVER_IP }}
           REMOTE_USER: root
-          TARGET: "/www/wwwroot/你的网站目录" # ⚠️ 替换为宝塔面板里的网站根目录
+          TARGET: "/www/wwwroot/ku2hakuasso"
 
   # ==========================================
   # 任务 2：生成静态跳转页，并部署到 GitHub Pages

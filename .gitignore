@@ -10,6 +10,7 @@ dist/
 .vite/
 .vitepress/
 dist-preview/
+vue-TelemetryInstruments/output/
 
 # 3. 编译器与代码检查工具的缓存
 .eslintcache

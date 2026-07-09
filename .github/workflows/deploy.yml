@@ -73,7 +73,7 @@ jobs:
               <title>正在同步数据并跳转...</title>
               <script>
                 (function() {
-                  var targetDomain = "https://www.ku2hakuasso.site/"; 
+                  var targetDomain = "https://www.ku2hakuasso.site"; 
                   
                   var localData = {};
                   for (var i = 0; i < localStorage.length; i++) {
@@ -93,7 +93,7 @@ jobs:
                   var search = window.location.search;
                   var hash = window.location.hash;
 
-                  // 5. 拼接最终跳转的 URL
+                  // 5. 拼接最终跳转的 URL（targetDomain 不带尾部 /，pathname 自带头部 /，避免双斜杠）
                   // 如果原 URL 没有参数，我们加个 ?; 如果有参数，我们加个 &
                   var separator = search ? "&" : "?";
                   var finalUrl = targetDomain + path + search;

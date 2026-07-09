@@ -7,7 +7,7 @@
         "subPath": "TelemetryInstruments",
         "devPort": 5175,
         "proxyApi": [
-            "/api-base"
+            "/api-scf"
         ]
     }
 ]

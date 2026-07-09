@@ -51,4 +51,4 @@ head:
 
 ![TISTART](http://i0.hdslb.com/bfs/new_dyn/31c5538dd557950349c7a808c628f7aa3706992621258932.jpg)
 
-[点击链接进入TI](https://kukuhakuasso.github.io/TelemetryInstruments/)
+[点击链接进入TI](https://www.ku2hakuasso.site/TelemetryInstruments/)

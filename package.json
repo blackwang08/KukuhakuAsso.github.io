@@ -1,5 +1,5 @@
 {
-    "name": "kukuhakuasso.github.io",
+    "name": "www.ku2hakuasso.site",
     "RSS_TITLE": "空白解谜组",
     "RSS_DESCRIPTION": "空白永不败北",
     "version": "1.0.0",
@@ -15,7 +15,7 @@
         "build": "node scripts/build-all.mjs",
         "preview": "vite preview --outDir dist-preview"
     },
-    "baseUrl": "https://KukuhakuAsso.github.io/",
+    "baseUrl": "https://www.ku2hakuasso.site",
     "repository": {
         "type": "git",
         "url": "git+https://github.com/KukuhakuAsso/KukuhakuAsso.github.io.git"

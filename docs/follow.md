@@ -48,11 +48,11 @@ lastUpdated: false
 
 ---
 
-## <VPSocialLinks :links="[{ icon: 'rss', link: 'https://kukuhakuasso.github.io/feed.xml' }]" class="inline-icon" /> RSS 订阅
+## <VPSocialLinks :links="[{ icon: 'rss', link: 'https://www.ku2hakasso.site/feed.xml' }]" class="inline-icon" /> RSS 订阅
 
 不想错过博客的任何一篇精彩深度长文？使用 RSS 订阅是最佳选择。你可以将本站的 RSS 链接复制到你常用的阅读器（如 NetNewsWire, Feedly, Reeder 等）中。
 
-- **RSS 订阅源地址**：`https://kukuhakuasso.github.io/feed.xml`
+- **RSS 订阅源地址**：`https://www.ku2hakasso.site/feed.xml`
 
 ::: info 如何订阅？
 

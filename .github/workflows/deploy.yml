@@ -54,50 +54,71 @@ jobs:
   # ==========================================
   # 任务 2：生成静态跳转页，并部署到 GitHub Pages
   # ==========================================
-  deploy_redirect_to_pages:
+ deploy_redirect_to_pages:
     runs-on: ubuntu-latest
-    # needs: deploy_to_cvm # 确保 CVM 部署成功后，再更新跳转页
+    # needs: deploy_to_cvm
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Create Redirect HTML
+      - name: Create Redirect and 404 HTML
         run: |
           mkdir redirect-page
-          # 动态生成一个包含重定向逻辑的 index.html
+          # 编写包含 localStorage 搬运逻辑的通用跳转代码
           cat << 'EOF' > redirect-page/index.html
           <!DOCTYPE html>
           <html>
             <head>
               <meta charset="UTF-8">
-              <meta http-equiv="refresh" content="0; url=https://www.ku2hakuasso.site/">
-              <title>正在跳转到新站点...</title>
+              <title>正在同步数据并跳转...</title>
               <script>
+                (function() {
+                  var targetDomain = "https://www.ku2hakuasso.site/"; 
+                  
+                  var localData = {};
+                  for (var i = 0; i < localStorage.length; i++) {
+                    var key = localStorage.key(i);
+                    localData[key] = localStorage.getItem(key);
+                  }
+                  
+                  // 3. 将数据转为 Base64 (防止特殊字符破坏 URL)
+                  // 注意：如果数据特别大，可以用 btoa(encodeURIComponent(JSON.stringify(localData)))
+                  var migratePayload = "";
+                  if (Object.keys(localData).length > 0) {
+                    migratePayload = encodeURIComponent(JSON.stringify(localData));
+                  }
 
-                // 1. 从旧域名的 localStorage 中读取你需要迁移的字段
-                const gameToken = localStorage.getItem('game_token');
-                const gameCompleted = localStorage.getItem('game_completed');
+                  // 4. 获取当前的路径、查询参数和哈希值 (完美兼容 Vitepress 和 Vue Hash 路由)
+                  var path = window.location.pathname;
+                  var search = window.location.search;
+                  var hash = window.location.hash;
 
-                // 2. 将数据打包并编码，防止特殊字符破坏 URL
-                const transferData = encodeURIComponent(JSON.stringify({
-                  gameToken: gameToken,
-                  gameCompleted: gameCompleted
-                }));
+                  // 5. 拼接最终跳转的 URL
+                  // 如果原 URL 没有参数，我们加个 ?; 如果有参数，我们加个 &
+                  var separator = search ? "&" : "?";
+                  var finalUrl = targetDomain + path + search;
+                  
+                  // 将 localStorage 数据塞进 _migrate 参数中
+                  if (migratePayload) {
+                    finalUrl += separator + "_migrate=" + migratePayload;
+                  }
+                  
+                  // Hash 必须放在整个 URL 的最后面
+                  finalUrl += hash;
 
-                // 3. 构建新的 URL，带上搬运的数据（通过一个叫 _migrate 的特殊参数传递）
-                const targetDomain = "https://www.ku2hakuasso.site/";
-                const newUrl = `${targetDomain}${window.location.pathname}?_migrate=${transferData}&${window.location.search.substring(1)}${window.location.hash}`;
-
-                // 4. 执行跳转
-                window.location.replace(newUrl);
+                  // 6. 立即跳转
+                  window.location.replace(finalUrl);
+                })();
               </script>
             </head>
-            <body style="background-color: #f5f5f5; text-align: center; font-family: sans-serif; padding-top: 50px;">
-              <p>系统已迁移至全新服务器，正在为您跳转...</p>
-              <p>如果没有自动跳转，请 <a href="https://www.ku2hakuasso.site/">点击这里</a>。</p>
+            <body style="text-align: center; padding-top: 50px; font-family: sans-serif;">
+              <p>系统已升级，正在同步您的本地数据并跳转至新站点...</p>
             </body>
           </html>
           EOF
+          
+          # 🎯 核心：将 index.html 复制一份重命名为 404.html，这样 GitHub Pages 就会自动处理 404 请求
+          cp redirect-page/index.html redirect-page/404.html
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
@@ -105,7 +126,7 @@ jobs:
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: redirect-page # 🎯 核心：只把这个包含跳转代码的文件夹给 GitHub Pages
+          path: redirect-page
 
       - name: Deploy to GitHub Pages
         id: deployment

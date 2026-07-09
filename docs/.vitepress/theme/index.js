@@ -16,5 +16,28 @@ export default {
     enhanceApp({ app, router, siteData }) {
         app.component("HiddenText", HiddenText);
         app.component("PostList", PostList);
+
+        // —— 跨域名数据迁移：从旧域名通过 URL 参数 _migrate 携带数据迁移到新域名 ——
+        // 确保只在客户端执行 (Vitepress 构建时也会跑这里，没有 window 对象会报错)
+        if (typeof window !== 'undefined') {
+            const urlParams = new URLSearchParams(window.location.search);
+            const migrateDataString = urlParams.get('_migrate');
+
+            if (migrateDataString) {
+                try {
+                    const migrateData = JSON.parse(decodeURIComponent(migrateDataString));
+                    Object.keys(migrateData).forEach(key => {
+                        localStorage.setItem(key, migrateData[key]);
+                    });
+
+                    urlParams.delete('_migrate');
+                    const newSearch = urlParams.toString() ? '?' + urlParams.toString() : '';
+                    const cleanUrl = window.location.pathname + newSearch + window.location.hash;
+                    window.history.replaceState({}, '', cleanUrl);
+                } catch (e) {
+                    console.error('Vitepress 同步数据失败', e);
+                }
+            }
+        }
     },
 };

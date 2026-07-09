@@ -7,7 +7,7 @@
 </template>
 
 <script setup>
-import { ref, watchEffect, provide } from 'vue'
+import { ref, watchEffect, provide, onMounted } from 'vue'
 import { useDark } from '@vueuse/core'
 import Header from './components/header.vue'
 import AudioPlayer from './components/audioPlayer.vue'
@@ -63,4 +63,35 @@ provide('isBgmPlaying', isBgmPlaying)
 provide('volume', volume)
 provide('playBgm', playBgm)
 provide('playDefault', playDefault)
+
+// —— 跨域名数据迁移：从旧域名通过 URL 参数 _migrate 携带数据迁移到新域名 ——
+onMounted(() => {
+  const urlParams = new URLSearchParams(window.location.search)
+  const migrateDataString = urlParams.get('_migrate')
+
+  if (migrateDataString) {
+    try {
+      // 1. 解码并解析传过来的 localStorage 数据
+      const migrateData = JSON.parse(decodeURIComponent(migrateDataString))
+
+      // 2. 遍历并写入到当前域名的 localStorage 中
+      for (const key in migrateData) {
+        if (Object.prototype.hasOwnProperty.call(migrateData, key)) {
+          localStorage.setItem(key, migrateData[key])
+        }
+      }
+
+      console.log('GitHub Pages 数据同步成功！')
+
+      // 3. 抹除 URL 中的 _migrate 参数，保持地址栏干净，并防止刷新时重复执行
+      urlParams.delete('_migrate')
+      const newSearch = urlParams.toString() ? '?' + urlParams.toString() : ''
+      // 注意保留 Hash
+      const cleanUrl = window.location.pathname + newSearch + window.location.hash
+      window.history.replaceState({}, '', cleanUrl)
+    } catch (error) {
+      console.error('解析迁移数据失败:', error)
+    }
+  }
+})
 </script>

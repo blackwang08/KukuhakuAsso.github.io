@@ -10,6 +10,7 @@ dist/
 .vite/
 .vitepress/
 dist-preview/
+vue-TelemetryInstruments/output/
 
 # 3. 编译器与代码检查工具的缓存
 .eslintcache
@@ -20,6 +21,7 @@ dist-preview/
 .env
 .env.local
 .env.*.local
+.env.development
 
 # 5. 系统与 IDE 的垃圾文件
 .DS_Store

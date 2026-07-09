@@ -7,10 +7,10 @@ export default defineConfig({
     base: "/TelemetryInstruments/",
     server: {
         proxy: {
-            "/api-base": {
-                target: "https://1438673597-hl571gnj2q.ap-shanghai.tencentscf.com",
+            "/api-scf": {
+                target: "http://www.ku2hakuasso.site/api-scf",
                 changeOrigin: true,
-                rewrite: (path) => path.replace(/^\/api-base/, ""), // 去掉 /api-base 前缀
+                rewrite: (path) => path.replace(/^\/api-scf/, ""), // 去掉 /api-base 前缀
             },
         },
         port: 5175, // 固定端口，避免随机占用

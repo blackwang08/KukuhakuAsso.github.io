@@ -86,8 +86,9 @@ onMounted(() => {
       // 3. 抹除 URL 中的 _migrate 参数，保持地址栏干净，并防止刷新时重复执行
       urlParams.delete('_migrate')
       const newSearch = urlParams.toString() ? '?' + urlParams.toString() : ''
-      // 注意保留 Hash
-      const cleanUrl = window.location.pathname + newSearch + window.location.hash
+      // 归一化路径：防止双斜杠（如 //vue-telemetry/）被 replaceState 误解析为跨域 URL
+      const cleanPath = window.location.pathname.replace(/\/+/g, '/')
+      const cleanUrl = cleanPath + newSearch + window.location.hash
       window.history.replaceState({}, '', cleanUrl)
     } catch (error) {
       console.error('解析迁移数据失败:', error)

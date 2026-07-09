@@ -32,7 +32,9 @@ export default {
 
                     urlParams.delete('_migrate');
                     const newSearch = urlParams.toString() ? '?' + urlParams.toString() : '';
-                    const cleanUrl = window.location.pathname + newSearch + window.location.hash;
+                    // 归一化路径：防止双斜杠（如 //vue-telemetry/）被 replaceState 误解析为跨域 URL
+                    const cleanPath = window.location.pathname.replace(/\/+/g, '/');
+                    const cleanUrl = cleanPath + newSearch + window.location.hash;
                     window.history.replaceState({}, '', cleanUrl);
                 } catch (e) {
                     console.error('Vitepress 同步数据失败', e);

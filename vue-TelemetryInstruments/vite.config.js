@@ -8,8 +8,8 @@ export default defineConfig({
     server: {
         proxy: {
             "/api-scf": {
-                // target: "https://www.ku2hakuasso.site", // 利用cvm服务器转发请求
-                target: "http://localhost:3000", // 本地后端服务器
+                target: "https://www.ku2hakuasso.site", // 利用cvm服务器转发请求
+                // target: "http://localhost:3000", // 本地后端服务器
                 changeOrigin: true,
                 rewrite: (path) => path.replace(/^\/api-scf/, ""), // 去掉 /api-scf 前缀
             },

@@ -43,7 +43,7 @@ jobs:
 
             - name: Trigger hook
               run: |
-                  curl -s -X POST "${{ secrets.HOOK_URL }}" > /dev/null 2>&1
+                  curl -k -s -X POST "${{ secrets.HOOK_URL }}" > /dev/null 2>&1
 
     deploy_redirect_to_pages:
         runs-on: ubuntu-latest

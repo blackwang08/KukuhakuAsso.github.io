@@ -1,133 +1,74 @@
-name: Deploy CVM and Redirect Git Pages
+name: Deploy (CVM Pull Mode & Git Pages Redirect)
 
 on:
-  push:
-    branches:
-      - main # 如果是 master 请修改
+    push:
+        branches:
+            - main
 
 permissions:
-  contents: read
-  pages: write
-  id-token: write
+    contents: write
+    pages: write
+    id-token: write
 
 concurrency:
-  group: pages
-  cancel-in-progress: true
+    group: pages
+    cancel-in-progress: true
 
 jobs:
-  # ==========================================
-  # 任务 1：编译真实业务，并通过 SSH 部署到 CVM，暂时使用手动部署
-  # ==========================================
-  # deploy_to_cvm:
-  #   runs-on: ubuntu-latest
-  #   steps:
-  #     - name: Checkout
-  #       uses: actions/checkout@v4
+    build_and_deploy:
+        runs-on: ubuntu-latest
+        steps:
+            - name: Checkout Source
+              uses: actions/checkout@v4
 
-  #     - name: Set up Node
-  #       uses: actions/setup-node@v4
-  #       with:
-  #         node-version: 20
-  #         cache: npm
+            - name: Set up Node
+              uses: actions/setup-node@v4
+              with:
+                  node-version: 20
+                  cache: npm
 
-  #     - name: Install root dependencies
-  #       run: npm install
+            - name: Install & Build 项目
+              run: |
+                  npm install
+                  cd vue-TelemetryInstruments && npm install && cd ..
+                  npm run build
 
-  #     - name: Install Telemetry dependencies
-  #       run: |
-  #         cd vue-TelemetryInstruments
-  #         npm install
+            #把编译好的静态网页，推送到当前仓库的 dist 分支
+            - name: Push Assets to Dist Branch
+              uses: JamesIves/github-pages-deploy-action@v4
+              with:
+                  folder: dist-preview # 编译产物目录
+                  branch: dist # 专门存放打包后文件的分支（会自动创建）
+                  token: ${{ secrets.GITHUB_TOKEN }} # 无需配置，GitHub 自动生成
 
-  #     - name: Build all projects
-  #       run: npm run build
+            - name: Trigger hook
+              run: |
+                  curl -k -s -X POST "${{ secrets.HOOK_URL }}" > /dev/null 2>&1
 
-  #     - name: Deploy to Tencent CVM via SSH
-  #       uses: easingthemes/ssh-deploy@main
-  #       with:
-  #         SSH_PRIVATE_KEY: ${{ secrets.SERVER_SSH_KEY }}
-  #         ARGS: "-avzr --delete"
-  #         SOURCE: "dist-preview/"
-  #         REMOTE_HOST: ${{ secrets.SERVER_IP }}
-  #         REMOTE_USER: root
-  #         TARGET: "/www/wwwroot/ku2hakuasso"
+    deploy_redirect_to_pages:
+        runs-on: ubuntu-latest
+        environment:
+            name: github-pages
+            url: ${{ steps.deployment.outputs.page_url }}
+        steps:
+            - name: Checkout Repository
+              uses: actions/checkout@v4 # 必须 checkout，才能拿到 .github 下的文件
 
-  # ==========================================
-  # 任务 2：生成静态跳转页，并部署到 GitHub Pages
-  # ==========================================
- deploy_redirect_to_pages:
-    runs-on: ubuntu-latest
-    # needs: deploy_to_cvm
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-    steps:
-      - name: Create Redirect and 404 HTML
-        run: |
-          mkdir redirect-page
-          # 编写包含 localStorage 搬运逻辑的通用跳转代码
-          cat << 'EOF' > redirect-page/index.html
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <meta charset="UTF-8">
-              <title>正在同步数据并跳转...</title>
-              <script>
-                (function() {
-                  var targetDomain = "https://www.ku2hakuasso.site"; 
-                  
-                  var localData = {};
-                  for (var i = 0; i < localStorage.length; i++) {
-                    var key = localStorage.key(i);
-                    localData[key] = localStorage.getItem(key);
-                  }
-                  
-                  // 3. 将数据转为 Base64 (防止特殊字符破坏 URL)
-                  // 注意：如果数据特别大，可以用 btoa(encodeURIComponent(JSON.stringify(localData)))
-                  var migratePayload = "";
-                  if (Object.keys(localData).length > 0) {
-                    migratePayload = encodeURIComponent(JSON.stringify(localData));
-                  }
+            # 如果 .github/page 下只有 index.html，需要生成一份 404.html
+            - name: Prepare Redirect Files
+              run: |
+                  mkdir -p page
+                  cp .github/page/index.html page/index.html
+                  cp .github/page/index.html page/404.html
 
-                  // 4. 获取当前的路径、查询参数和哈希值 (完美兼容 Vitepress 和 Vue Hash 路由)
-                  var path = window.location.pathname;
-                  var search = window.location.search;
-                  var hash = window.location.hash;
+            - name: Setup Pages
+              uses: actions/configure-pages@v4
 
-                  // 5. 拼接最终跳转的 URL（targetDomain 不带尾部 /，pathname 自带头部 /，避免双斜杠）
-                  // 如果原 URL 没有参数，我们加个 ?; 如果有参数，我们加个 &
-                  var separator = search ? "&" : "?";
-                  var finalUrl = targetDomain + path + search;
-                  
-                  // 将 localStorage 数据塞进 _migrate 参数中
-                  if (migratePayload) {
-                    finalUrl += separator + "_migrate=" + migratePayload;
-                  }
-                  
-                  // Hash 必须放在整个 URL 的最后面
-                  finalUrl += hash;
+            - name: Upload artifact
+              uses: actions/upload-pages-artifact@v3
+              with:
+                  path: page # 上传处理后的目录
 
-                  // 6. 立即跳转
-                  window.location.replace(finalUrl);
-                })();
-              </script>
-            </head>
-            <body style="text-align: center; padding-top: 50px; font-family: sans-serif;">
-              <p>系统已升级，正在同步您的本地数据并跳转至新站点...</p>
-            </body>
-          </html>
-          EOF
-          
-          # 🎯 核心：将 index.html 复制一份重命名为 404.html，这样 GitHub Pages 就会自动处理 404 请求
-          cp redirect-page/index.html redirect-page/404.html
-
-      - name: Setup Pages
-        uses: actions/configure-pages@v4
-
-      - name: Upload artifact
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: redirect-page
-
-      - name: Deploy to GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+            - name: Deploy to GitHub Pages
+              id: deployment
+              uses: actions/deploy-pages@v4

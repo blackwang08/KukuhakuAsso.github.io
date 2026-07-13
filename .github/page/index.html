@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>站点迁移通知 - 正在跳转...</title>
+    <style>
+        body {
+            background-color: #f8f9fa;
+            color: #333;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            text-align: center;
+        }
+        .container {
+            max-width: 500px;
+            padding: 30px;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+        }
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e9ecef;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        a { color: #3498db; text-decoration: none; }
+        a:hover { text-decoration: underline; }
+    </style>
+    <script>
+        (function() {
+            // 🎯 1. 配置你的新 CVM 访问地址（末尾不要加斜杠 /）
+            var CVM_HOST = "https://www.ku2hakuasso.site"; 
+            
+            // 🎯 2. 路径处理配置
+            // 请保持 IS_CVM_ROOT = true，它会自动裁切掉 GitHub Pages 的仓库名前缀
+            var IS_CVM_ROOT = true; 
+
+            try {
+                // 3. 提取 GitHub Pages 域名下的全部 localStorage 数据
+                var localData = {};
+                for (var i = 0; i < localStorage.length; i++) {
+                    var key = localStorage.key(i);
+                    localData[key] = localStorage.getItem(key);
+                }
+
+                // 4. 将数据转换为序列化字符串（进行安全编码，防止混淆 URL 结构）
+                var migratePayload = "";
+                if (Object.keys(localData).length > 0) {
+                    migratePayload = encodeURIComponent(JSON.stringify(localData));
+                }
+
+                // 5. 捕获当前请求的完整环境要素
+                var path = window.location.pathname; // 例如: /TelemetryInstruments/
+                var search = window.location.search;   // 例如: ?token=123
+                var hash = window.location.hash;       // 例如: #/puzzle/0
+
+                // 6. 如果迁移到 CVM 根目录，裁剪掉多余的 GitHub 仓库路径前缀
+                if (IS_CVM_ROOT) {
+                    // 移除第一层目录
+                    path = path.replace(/^\/[^\/]+/, '');
+                    if (!path) path = '/';
+                }
+
+                // 7. 拼装携带参数的全新 URL
+                // 如果原 URL 已经有参数，用 & 拼接，否则用 ? 拼接
+                var separator = search ? "&" : "?";
+                var finalUrl = CVM_HOST + path + search;
+                
+                if (migratePayload) {
+                    finalUrl += separator + "_migrate=" + migratePayload;
+                }
+                
+                // ⚡ Hash 路由片段（如 Vue 路由）必须严格放置在整个 URL 的最后端
+                finalUrl += hash;
+
+                // 8. 弹射跳转（使用 replace 替换历史记录，防止点击浏览器后退时陷入死循环）
+                window.location.replace(finalUrl);
+
+            } catch (e) {
+                console.error("重定向发生错误:", e);
+                // 降级兜底方案：如果脚本挂了，直接盲跳根目录
+                window.location.replace(CVM_HOST);
+            }
+        })();
+    </script>
+</head>
+<body>
+    <div class="container">
+        <div class="spinner"></div>
+        <h2>系统升级与迁移通知</h2>
+        <p>核心业务已迁移至全新腾讯云 CVM 服务器。</p>
+        <p style="color: #666; font-size: 14px;">正在为您安全同步本地缓存并安全跳转...</p>
+        <p style="margin-top: 25px; font-size: 13px; color: #999;">
+            如果页面长时间没有响应，请 <a id="fallback-link" href="#">点击此处手动前往</a>。
+        </p>
+    </div>
+    <script>
+        // 动态为兜底标签加上目标地址，防止 JS 挂掉用户无法点击
+        document.getElementById('fallback-link').href = "https://www.ku2hakuasso.site" + window.location.hash;
+    </script>
+</body>
+</html>

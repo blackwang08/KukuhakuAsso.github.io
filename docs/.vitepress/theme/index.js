@@ -5,13 +5,16 @@ import "./style.css";
 import HiddenText from "./components/HiddenText.vue";
 import PostList from "./layouts/PostList.vue";
 import Tags from "./components/Tags.vue";
+import Author from "./components/Author.vue";
 
 /** @type {import('vitepress').Theme} */
 export default {
     extends: DefaultTheme,
     Layout: () => {
         return h(DefaultTheme.Layout, null, {
+            "doc-before": () => h(Author),
             "doc-footer-before": () => h(Tags),
+
             // https://vitepress.dev/guide/extending-default-theme#layout-slots
         });
     },

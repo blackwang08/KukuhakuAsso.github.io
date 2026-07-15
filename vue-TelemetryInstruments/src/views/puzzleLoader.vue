@@ -3,14 +3,14 @@
     <h1>{{ currentTitle }}</h1>
 
     <PuzzleNavigation :current-level="currentLevel" :max-level="maxUnlockedLevel" :visible="!gameCompleted"
-      @navigate="goToLevel" />
+                      @navigate="goToLevel"/>
 
     <div v-html="currentContent"></div>
 
     <!-- 线索图片展示与加载异常处理 -->
     <div v-if="clueImageUrl && !gameCompleted" class="clue-display">
       <img v-if="!clueImageError" :src="clueImageUrl" alt="线索图片" style="max-width: 100%; border-radius: 8px;"
-        @error="clueImageError = true" />
+           @error="clueImageError = true"/>
       <div v-else class="clue-error">
         <p>⚠️ 线索图片加载失败，可能因缓存失效或网络问题。</p>
         <div class="clue-error-actions">
@@ -25,7 +25,7 @@
     <!-- 答案输入区域 -->
     <div v-if="!gameCompleted" style="margin-top: 2rem;">
       <input type="text" v-model.trim="answer" placeholder="输入答案" style="padding: 0.5rem; width: 260px;"
-        @keyup.enter="handleSubmit" />
+             @keyup.enter="handleSubmit"/>
       <button @click="handleSubmit" :disabled="loading" style="padding: 0.5rem 1rem; margin-left: 0.5rem;">
         {{ loading ? '验证中...' : '提交' }}
       </button>
@@ -38,7 +38,7 @@
     <div v-if="gameCompleted" class="ending">
       <!-- 图片正常加载且未超时 -->
       <img v-if="endingImageUrl && !endingImageError" :src="endingImageUrl" alt="恭喜通关"
-        style="max-width: 100%; border-radius: 8px;" @load="onEndingImageLoad" @error="onEndingImageError" />
+           style="max-width: 100%; border-radius: 8px;" @load="onEndingImageLoad" @error="onEndingImageError"/>
       <!-- 图片加载中（URL 已有，但图片还没 load） -->
       <p v-else-if="endingImageUrl && !endingImageError && !endingImageTimeout" class="loading-text">
         正在加载结局图片...
@@ -65,16 +65,23 @@
         </div>
       </div>
     </div>
-    <resetButton :game-completed="gameCompleted" :visible="gameCompleted" @reset="resetGame" />
-    <InfoUploadModal v-model:visible="showInfoModal" @submitted="infoSubmitted = true" />
+    <resetButton :game-completed="gameCompleted" :visible="gameCompleted" @reset="resetGame"/>
+    <InfoUploadModal v-model:visible="showInfoModal" @submitted="infoSubmitted = true"/>
   </article>
 </template>
 
 <script setup>
-import { inject, ref, onMounted, watch, onBeforeUnmount, computed, nextTick } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { validateAndNormalize } from '../utils/verifierGuard.js'
-import { startGame, fetchPuzzle, checkAnswer, fetchEndingAssets, TokenExpiredError } from '../utils/authFetch.js'
+import {inject, ref, onMounted, watch, onBeforeUnmount, computed, nextTick} from 'vue'
+import {useRoute, useRouter} from 'vue-router'
+import {validateAndNormalize} from '../utils/verifierGuard.js'
+import {
+  startGame,
+  fetchPuzzle,
+  refetchPuzzle,
+  checkAnswer,
+  fetchEndingAssets,
+  TokenExpiredError
+} from '../utils/authFetch.js'
 import PuzzleNavigation from '@/components/puzzleNavigation.vue'
 import resetButton from '@/components/reset.vue'
 import InfoUploadModal from '@/components/upload.vue'
@@ -88,14 +95,14 @@ import {
 
 const route = useRoute()
 const router = useRouter()
-const props = defineProps({ level: { type: [String, Number], required: true } })
+const props = defineProps({level: {type: [String, Number], required: true}})
 const currentLevel = computed(() => parseInt(props.level))
 
 // ==================== 全局累积状态 ====================
 const gameCompleted = ref(false)
 const endingImageUrl = ref('')
 const maxUnlockedLevel = ref(
-  parseInt(localStorage.getItem('puzzle_max_unlocked')) || 0
+    parseInt(localStorage.getItem('puzzle_max_unlocked')) || 0
 )
 const rewardCheck = ref(false)
 const showInfoModal = ref(false)
@@ -129,7 +136,6 @@ const endingAssetTimeout = ref(false)
 let endingAssetTimer = null
 
 
-
 // ==================== 工具函数 ====================
 function onEndingImageLoad() {
   clearEndingImgTimer()
@@ -153,6 +159,7 @@ const playDefault = inject('playDefault', null)
 // 请求序号，用于避免并发切换时旧请求覆盖新的缓存
 let bgmRequestCounter = 0
 let currentBgmRequestId = 0
+
 function resetGame() {
   if (confirm('确定要重置游戏吗？这将清除所有进度和缓存。')) {
     const token = localStorage.getItem('game_token');
@@ -416,16 +423,34 @@ async function loadLocalClue(level) {
 
   try {
     const cached = await getClueImageBlob(level)
-    if (!cached) return
+    if (!cached) {
+      const {clueFileHash, clueFileUrl, success} = await refetchPuzzle(props.level)
+      if (success) {
+        await cacheImageAndNavigate(clueFileUrl, clueFileHash, props.level);
+        location.reload()
+      }
+    }
 
     if (cached instanceof Blob) {
       currentObjectURL = URL.createObjectURL(cached)
       clueImageUrl.value = currentObjectURL
     } else if (typeof cached === 'string') {
+      const response = await fetch(url)
+      if (!response.ok) throw new Error('图片下载失败')
       clueImageUrl.value = cached
     }
   } catch (error) {
     console.error('从 IndexedDB 读取缓存图片失败:', error)
+    try {
+      console.log('尝试重新获取图片中')
+      const {clueFileHash, clueFileUrl, success} = await refetchPuzzle(props.level)
+      if (success) {
+        await cacheImageAndNavigate(clueFileUrl, clueFileHash, props.level);
+        location.reload()
+      }
+    }catch (error) {
+      console.error('图片仍处于错误状态', error)
+    }
   }
 }
 
@@ -433,6 +458,7 @@ async function retryLoadClue() {
   clueImageError.value = false
   await nextTick()
   await loadLocalClue(props.level)
+  console.log(clueImageError.value)
 }
 
 // ==================== 图片预缓存逻辑 ====================
@@ -540,8 +566,7 @@ async function loadEndingAssets() {
           music = assets.finalBgm
           cacheFinalBgmConfig(assets.finalBgm)
         }
-      }
-      catch (err) {
+      } catch (err) {
         console.error('重新获取结局音乐失败:', err)
       }
     }
@@ -571,9 +596,15 @@ async function loadEndingAssets() {
 // ==================== 答案提交与流程控制 ====================
 async function handleSubmit() {
   const raw = validateAndNormalize(answer.value)
-  if (!raw.valid) { result.value = raw.error; return }
+  if (!raw.valid) {
+    result.value = raw.error;
+    return
+  }
   const userAnswer = raw.normalized || answer.value.trim()
-  if (!userAnswer) { result.value = '请输入答案'; return }
+  if (!userAnswer) {
+    result.value = '请输入答案';
+    return
+  }
 
   loading.value = true
   result.value = ''

@@ -50,6 +50,15 @@ export async function fetchPuzzle(level) {
     return res.json();
 }
 
+// 重新获取关卡数据
+export async function refetchPuzzle(level) {
+    const res = await authFetch(`/api/puzzle/${level}`, { method: "POST" });
+    if (res.status === 403) {
+        throw new Error("无权限访问该关卡");
+    }
+    return res.json();
+}
+
 // 重新获取结局资源
 export async function fetchEndingAssets() {
     const res = await authFetch("/api/ending/assets");

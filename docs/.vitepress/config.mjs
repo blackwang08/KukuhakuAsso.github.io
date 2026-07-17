@@ -41,6 +41,10 @@ const hostname = "https://kukuhakuasso.github.io/";
 export default defineConfig({
     title: dynamicTitle,
     description: dynamicDescription,
+    head: [
+        ["link", { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" }],
+        ["link", { rel: "icon", type: "image/x-icon", href: "/favicon.ico" }],
+    ],
     themeConfig: {
         // https://vitepress.dev/reference/default-theme-config
         nav: [
@@ -87,6 +91,34 @@ export default defineConfig({
                     );
                 },
             }),
+            // dev 模式：子项目 Vite 会改写 /favicon.svg → /子路径/favicon.svg
+            // 直接返回主项目 favicon 并禁用缓存
+            {
+                name: "favicon-rewrite",
+                configureServer(server) {
+                    const publicDir = path.resolve(__dirname, "public");
+                    server.middlewares.stack.unshift({
+                        route: "",
+                        handle: (req, res, next) => {
+                            const url = req.url || "";
+                            for (const p of projects) {
+                                if (p.subPath && url.startsWith(`/${p.subPath}/favicon`)) {
+                                    const filename = path.basename(url);
+                                    const filePath = path.join(publicDir, filename);
+                                    if (fs.existsSync(filePath)) {
+                                        const ext = path.extname(filePath);
+                                        res.setHeader("Content-Type", ext === ".svg" ? "image/svg+xml" : "image/x-icon");
+                                        res.setHeader("Cache-Control", "no-cache, no-store, must-revalidate");
+                                        res.end(fs.readFileSync(filePath));
+                                        return;
+                                    }
+                                }
+                            }
+                            next();
+                        },
+                    });
+                },
+            },
         ],
 
         server: {

@@ -1,4 +1,4 @@
-const apiBase = import.meta.env.VITE_API_BASE || '';
+const apiBase = import.meta.env.VITE_API_SCF_BASE || "";
 
 // 获取存储的 token
 function getToken() {

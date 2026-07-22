@@ -138,6 +138,24 @@
 }
 
 /**
+ * Component: Navigation bar title
+ * -------------------------------------------------------------------------- */
+
+.VPNavBarTitle .title {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.VPNavBarTitle .title::before {
+  width: 24px;
+  height: 24px;
+  background: url("/favicon.svg") center / contain no-repeat;
+  content: "";
+  flex: 0 0 auto;
+}
+
+/**
  * Component: Home entrance motion
  * -------------------------------------------------------------------------- */
 

@@ -25,6 +25,18 @@ export default {
         // —— 跨域名数据迁移：从旧域名通过 URL 参数 _migrate 携带数据迁移到新域名 ——
         // 确保只在客户端执行 (Vitepress 构建时也会跑这里，没有 window 对象会报错)
         if (typeof window !== "undefined") {
+            const rootStyle = document.documentElement.style;
+            const updateCursorPosition = (event) => {
+                rootStyle.setProperty("--cursor-x", `${event.clientX}px`);
+                rootStyle.setProperty("--cursor-y", `${event.clientY}px`);
+            };
+
+            if (window.matchMedia("(hover: hover) and (pointer: fine)").matches) {
+                window.addEventListener("pointermove", updateCursorPosition, {
+                    passive: true,
+                });
+            }
+
             const urlParams = new URLSearchParams(window.location.search);
             const migrateDataString = urlParams.get("_migrate");
 

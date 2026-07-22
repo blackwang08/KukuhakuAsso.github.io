@@ -1,6 +1,12 @@
 <template>
     <div class="post-list">
-        <a v-for="post in filteredPosts" :key="post.url" :href="post.url" class="post-item">
+        <a
+            v-for="(post, index) in filteredPosts"
+            :key="post.url"
+            :href="post.url"
+            class="post-item"
+            :style="{ '--post-delay': `${index * 100}ms` }"
+        >
             <span class="date">{{ post.date }}</span>
             <span class="title">{{ post.title }}</span>
         </a>
@@ -31,6 +37,18 @@ const filteredPosts = computed(() => {
 
 <style scoped>
 
+@keyframes post-slide-in {
+    from {
+        opacity: 0;
+        transform: translateX(-28px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
 .post-list {
     display: flex;
     flex-direction: column;
@@ -48,6 +66,8 @@ const filteredPosts = computed(() => {
     border-radius: 8px;
     text-decoration: none !important;
     transition: all 0.25s;
+    animation: post-slide-in 500ms cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation-delay: var(--post-delay);
 }
 
 .post-item:hover {
@@ -72,5 +92,11 @@ const filteredPosts = computed(() => {
     font-style: italic;
     font-family: monospace;
     padding: 12px 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .post-item {
+        animation: none;
+    }
 }
 </style>

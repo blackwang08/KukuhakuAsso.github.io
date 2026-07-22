@@ -155,6 +155,10 @@
   flex: 0 0 auto;
 }
 
+html.dark .VPNavBarTitle .title::before {
+  background-image: url("/favicon_white.svg");
+}
+
 /**
  * Component: Home entrance motion
  * -------------------------------------------------------------------------- */

@@ -1,4 +1,4 @@
-const apiBase = import.meta.env.VITE_API_BASE || '';
+const apiBase = import.meta.env.VITE_API_SCF_BASE || "";
 
 // 获取存储的 token
 function getToken() {
@@ -44,6 +44,15 @@ export async function startGame() {
 // 获取关卡数据
 export async function fetchPuzzle(level) {
     const res = await authFetch(`/api/puzzle/${level}`);
+    if (res.status === 403) {
+        throw new Error("无权限访问该关卡");
+    }
+    return res.json();
+}
+
+// 重新获取关卡数据
+export async function refetchPuzzle(level) {
+    const res = await authFetch(`/api/puzzle/${level}`, { method: "POST" });
     if (res.status === 403) {
         throw new Error("无权限访问该关卡");
     }

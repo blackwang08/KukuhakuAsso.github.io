@@ -1,5 +1,5 @@
 // scripts/dev-all.mjs
-import { spawn, execSync } from "child_process"; // 💡 引入 execSync 用来执行同步命令
+import { spawn, execSync } from "child_process";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -15,11 +15,16 @@ console.log("🚀 正在并发启动所有项目的开发服务器...\n");
 
 const runningProcesses = [];
 
+// 💡 核心修复 1：把 stdin 设为 ignore，防止子进程（Vite）抢占我们在 Git Bash 的键盘输入
+const spawnOptions = {
+    shell: true,
+    stdio: ["ignore", "inherit", "inherit"], // [stdin, stdout, stderr]
+};
+
 // 1. 启动 VitePress 博客
 const docsServer = spawn("npx", ["vitepress", "dev", "docs"], {
+    ...spawnOptions,
     cwd: ROOT_DIR,
-    shell: true,
-    stdio: "inherit",
 });
 runningProcesses.push(docsServer);
 
@@ -29,36 +34,58 @@ for (const project of projectTable) {
         `🔗 正在拉起子项目开发服务器: ${project.name} (端口预测: ${project.devPort})`,
     );
     const subServer = spawn("npm", ["run", "dev"], {
+        ...spawnOptions,
         cwd: path.resolve(ROOT_DIR, project.dir),
-        shell: true,
-        stdio: "inherit",
     });
     runningProcesses.push(subServer);
 }
 
-// 统一关闭管理（针对 Windows 进程树优化版）
+// 防抖标志，防止疯狂按 Ctrl+C 导致重复执行
+let isExiting = false;
+
+// 统一关闭管理
 const killAll = () => {
-    console.log("\n🛑 正在强制关闭所有开发服务器及子进程...");
+    if (isExiting) return;
+    isExiting = true;
+    console.log("\n🛑 接收到退出信号，正在强制清场...");
 
     runningProcesses.forEach((proc) => {
         if (proc.pid) {
             try {
-                // 🎯 关键修复：使用 Windows 原生 taskkill 连带 shell 和它底下的 Vite 一起端掉
-                // /PID 指定进程号，/T 顺藤摸瓜杀掉所有子进程，/F 强制执行
-                execSync(`taskkill /pid ${proc.pid} /T /F`, {
-                    stdio: "ignore",
-                });
+                if (process.platform === "win32") {
+                    // Windows 下暴力斩树
+                    execSync(`taskkill /pid ${proc.pid} /T /F`, {
+                        stdio: "ignore",
+                    });
+                } else {
+                    proc.kill("SIGKILL");
+                }
             } catch (e) {
-                // 如果进程已经提前死了，兜底用普通 kill 释放内存
-                proc.kill();
+                // 忽略已退出的进程抛错
             }
         }
     });
 
     console.log("✨ 所有后台进程已干净退出。\n");
-    process.exit();
+    process.exit(0);
 };
 
-// 监听终端退出事件
+process.stdin.resume(); // 唤醒标准输入流
+process.stdin.setEncoding("utf8");
+
+// 如果支持 raw 模式，开启它（能更敏锐地捕获单次按键）
+if (process.stdin.setRawMode) {
+    process.stdin.setRawMode(true);
+}
+
+// 暴力监听数据流
+process.stdin.on("data", (key) => {
+    // \u0003 是 Ctrl+C 的十六进制 ASCII 码
+    // \u0004 是 Ctrl+D 的十六进制 ASCII 码
+    if (key === "\u0003" || key === "\u0004") {
+        killAll();
+    }
+});
+
 process.on("SIGINT", killAll);
 process.on("SIGTERM", killAll);

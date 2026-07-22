@@ -160,6 +160,43 @@ html.dark .VPNavBarTitle .title::before {
 }
 
 /**
+ * Component: Cursor-revealed page background
+ * -------------------------------------------------------------------------- */
+
+:root {
+  --cursor-x: 50vw;
+  --cursor-y: 50vh;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  body::before {
+    position: fixed;
+    z-index: 0;
+    inset: 0;
+    background: url("/favicon.svg") center / 280px no-repeat;
+    content: "";
+    mask-image: radial-gradient(
+      circle 144px at var(--cursor-x) var(--cursor-y),
+      #000 0,
+      #000 70%,
+      transparent 100%
+    );
+    opacity: 0.1;
+    pointer-events: none;
+  }
+
+  html.dark body::before {
+    background-image: url("/favicon_white.svg");
+    opacity: 0.16;
+  }
+
+  #app {
+    position: relative;
+    z-index: 1;
+  }
+}
+
+/**
  * Component: Home entrance motion
  * -------------------------------------------------------------------------- */
 

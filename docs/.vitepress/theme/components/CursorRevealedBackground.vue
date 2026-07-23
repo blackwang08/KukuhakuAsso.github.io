@@ -61,12 +61,11 @@ onBeforeUnmount(() => {
 }
 
 .cursor-revealed-background.is-ready {
-  background: url("/favicon.svg") center / 280px no-repeat;
+  background: url("../../../public/favicon.svg") center / 280px no-repeat;
 }
 
-:global(html.dark) .cursor-revealed-background.is-ready {
-  background-image: url("/favicon_white.svg");
-  opacity: 0.16;
+html.dark .cursor-revealed-background.is-ready {
+  background-image: url("../../../public/favicon_white.svg");
 }
 
 @media (hover: none), (pointer: coarse) {

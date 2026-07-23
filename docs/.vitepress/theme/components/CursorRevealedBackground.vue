@@ -17,10 +17,23 @@ const cursorX = ref(0);
 const cursorY = ref(0);
 const isReady = ref(false);
 let supportsPointerReveal = false;
+let animationFrameId = null;
+let pendingCursorX = 0;
+let pendingCursorY = 0;
 
 const updateCursorPosition = (event) => {
-  cursorX.value = event.clientX;
-  cursorY.value = event.clientY;
+  pendingCursorX = event.clientX;
+  pendingCursorY = event.clientY;
+
+  if (animationFrameId !== null) {
+    return;
+  }
+
+  animationFrameId = window.requestAnimationFrame(() => {
+    cursorX.value = pendingCursorX;
+    cursorY.value = pendingCursorY;
+    animationFrameId = null;
+  });
 };
 
 onMounted(async () => {
@@ -42,6 +55,10 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   window.removeEventListener("pointermove", updateCursorPosition);
+
+  if (animationFrameId !== null) {
+    window.cancelAnimationFrame(animationFrameId);
+  }
 });
 </script>
 

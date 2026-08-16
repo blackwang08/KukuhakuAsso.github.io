@@ -24,20 +24,23 @@ const escapeRegExp = (s) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 export default defineConfig(({ mode }) => {
     const env = loadEnv(mode, process.cwd(), "");
 
-    // 代理目标统一从环境变量读取（.env.development / .env.development.local）
-    const proxyTarget = env.API_PROXY_TARGET;
-    const proxyRewrite = env.API_PROXY_REWRITE === "true";
+    // /api-mist 代理目标（.env.development / .env.development.local）
+    const scfTarget = env.API_SCF_TARGET;
+    const scfRewrite = env.API_SCF_REWRITE === "true";
 
+    // 未配置 API_SCF_TARGET 时跳过代理注册（空 target 会导致 dev server 报错）
     const proxy = {};
-    for (const prefix of proxyApi) {
-        proxy[prefix] = {
-            target: proxyTarget,
-            changeOrigin: true,
-            ...(proxyRewrite && {
-                rewrite: (p) =>
-                    p.replace(new RegExp(`^${escapeRegExp(prefix)}`), ""),
-            }),
-        };
+    if (scfTarget) {
+        for (const prefix of proxyApi) {
+            proxy[prefix] = {
+                target: scfTarget,
+                changeOrigin: true,
+                ...(scfRewrite && {
+                    rewrite: (p) =>
+                        p.replace(new RegExp(`^${escapeRegExp(prefix)}`), ""),
+                }),
+            };
+        }
     }
 
     return {

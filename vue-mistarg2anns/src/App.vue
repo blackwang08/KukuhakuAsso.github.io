@@ -1,15 +1,14 @@
 <template>
   <div class="app">
-    <h1>mistarg2anns</h1>
-    <p>新子项目，开始编写内容。</p>
+    <GalPage />
   </div>
 </template>
 
 <script setup>
+import GalPage from "./components/GalPage.vue";
 </script>
 
 <style scoped>
-.app {
-  padding: 2rem;
-}
+/* 页面即游戏宿主：布局由全局 style.css 的 .app 控制，
+   引擎工具条/舞台样式在 GalPage.vue 内维护 */
 </style>

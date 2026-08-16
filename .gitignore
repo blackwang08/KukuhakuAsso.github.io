@@ -10,6 +10,7 @@ dist/
 .vite/
 dist-preview/
 vue-TelemetryInstruments/output/
+vue-mistarg2anns/output/
 
 # 3. 编译器与代码检查工具的缓存
 .eslintcache
